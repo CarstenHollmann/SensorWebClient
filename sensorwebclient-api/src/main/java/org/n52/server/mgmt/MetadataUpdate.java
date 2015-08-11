@@ -27,7 +27,7 @@
  */
 package org.n52.server.mgmt;
 
-import static org.n52.server.mgmt.ConfigurationContext.getSOSMetadata;
+import static org.n52.server.mgmt.ConfigurationContext.getMetadata;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -42,17 +42,17 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
-import org.n52.shared.serializable.pojos.sos.SOSMetadata;
+import org.n52.shared.Metadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SosMetadataUpdate {
+public class MetadataUpdate {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SosMetadataUpdate.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MetadataUpdate.class);
 
-    public static void updateSosServices(Iterable<String> sosServices) throws Exception {
+    public static void updateServices(Iterable<String> services) throws Exception {
         long startTimeInMillis = System.currentTimeMillis();
-        performServiceUpdateFor(sosServices);
+        performServiceUpdateFor(services);
         float secondsElapsed = getSecondsElapsedSince(startTimeInMillis);
         LOGGER.info("Cache update took {} seconds.", secondsElapsed);
     }
@@ -116,8 +116,8 @@ public class SosMetadataUpdate {
         ObjectInput input = new ObjectInputStream(stream);
         try {
             // deserialize the List
-            SOSMetadata metadata = (SOSMetadata) input.readObject();
-            ConfigurationContext.addNewSOSMetadata(metadata);
+            Metadata metadata = (Metadata) input.readObject();
+            ConfigurationContext.addNewMetadata(metadata);
         } finally {
             input.close();
         }
@@ -140,7 +140,7 @@ public class SosMetadataUpdate {
         OutputStream os = new FileOutputStream(cache);
         ObjectOutput serializer = new ObjectOutputStream(new BufferedOutputStream(os));
         try {
-            serializer.writeObject(getSOSMetadata(serviceUrl));
+            serializer.writeObject(getMetadata(serviceUrl));
         } finally {
             serializer.close();
             os.close();

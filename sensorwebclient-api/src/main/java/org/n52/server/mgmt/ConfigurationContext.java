@@ -47,6 +47,7 @@ import javax.xml.parsers.SAXParserFactory;
 import org.n52.server.da.MetadataHandler;
 import org.n52.server.da.oxf.DefaultMetadataHandler;
 import org.n52.server.util.Statistics;
+import org.n52.shared.Metadata;
 import org.n52.shared.serializable.pojos.sos.SOSMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +64,7 @@ public class ConfigurationContext implements ServletContextAware {
 
 
 
-    private static Map<String, SOSMetadata> serviceMetadatas = Collections.synchronizedMap(new HashMap<String, SOSMetadata>());
+    private static Map<String, Metadata> serviceMetadatas = Collections.synchronizedMap(new HashMap<String, Metadata>());
 
     public static int STARTUP_DELAY;
 
@@ -232,20 +233,56 @@ public class ConfigurationContext implements ServletContextAware {
         return values;
     }
 
-
-
-
-
-    public synchronized static Map<String, SOSMetadata> getServiceMetadatas() {
+    
+    public synchronized static Map<String, Metadata> getServiceMetadatas() {
         return serviceMetadatas;
     }
 
     public synchronized static Collection<SOSMetadata> getSOSMetadatas() {
         List<SOSMetadata> sosMetadatas = new ArrayList<SOSMetadata>();
-        for (SOSMetadata metadata : serviceMetadatas.values()) {
-            sosMetadatas.add(metadata);
+        for (Metadata metadata : serviceMetadatas.values()) {
+        	if (metadata instanceof SOSMetadata) {
+        		sosMetadatas.add((SOSMetadata)metadata);
+        	}
         }
         return sosMetadatas;
+    }
+    
+    public synchronized static Collection<Metadata> getMetadatas() {
+        List<Metadata> metadatas = new ArrayList<Metadata>();
+        for (Metadata metadata : serviceMetadatas.values()) {
+        	metadatas.add(metadata);
+        }
+        return metadatas;
+    }
+    
+    public synchronized static Metadata getMetadata(String url) {
+        url = url.trim();
+        if (isMetadataAvailable(url)) {
+            return getServiceMetadatas().get(url);
+        }
+        try {
+            if (containsServiceMetadata(url)) {
+                Metadata metadata = getServiceMetadatas().get(url);
+                MetadataHandler handler = createMetadataHandler(metadata);
+                handler.performMetadataCompletion();
+                if ( !metadata.hasDonePositionRequest()) {
+                    MetadataUpdate.updateService(url);
+                }
+                return metadata;
+            } else {
+                // try to get metadata with default SOS version.
+                SOSMetadata metadata = new SOSMetadata(url, url, DEFAULT_SOS_VERSION);
+                MetadataUpdate.updateService(url);
+                serviceMetadatas.put(url, metadata);
+                return metadata;
+            }
+        }
+        catch (Exception e) {
+            // throw new RuntimeException("Error building server metadata", e);
+            LOGGER.error("Error building server metadata", e);
+            return null; // TODO do not return null
+        }
     }
 
     public synchronized static SOSMetadata getSOSMetadata(String url) {
@@ -254,18 +291,18 @@ public class ConfigurationContext implements ServletContextAware {
             return (SOSMetadata) getServiceMetadatas().get(url);
         }
         try {
-            if (containsServiceMetadata(url)) {
-                SOSMetadata metadata = getServiceMetadatas().get(url);
+            if (containsSosMetadata(url)) {
+                SOSMetadata metadata = (SOSMetadata) getServiceMetadatas().get(url);
                 MetadataHandler handler = createSosMetadataHandler(metadata);
                 handler.performMetadataCompletion();
                 if ( !metadata.hasDonePositionRequest()) {
-                    SosMetadataUpdate.updateService(url);
+                    MetadataUpdate.updateService(url);
                 }
                 return metadata;
             } else {
                 // try to get metadata with default SOS version.
                 SOSMetadata metadata = new SOSMetadata(url, url, DEFAULT_SOS_VERSION);
-                SosMetadataUpdate.updateService(url);
+                MetadataUpdate.updateService(url);
                 serviceMetadatas.put(url, metadata);
                 return metadata;
             }
@@ -282,12 +319,13 @@ public class ConfigurationContext implements ServletContextAware {
         String handler = metadata.getSosMetadataHandler();
         if (handler == null) {
             LOGGER.info("Using default SOS metadata handler for '{}'", metadata.getServiceUrl());
-            return new DefaultMetadataHandler(metadata);
+            handler = metadata.getDefaultMetadataHandler();
+//            return new DefaultMetadataHandler(metadata);
         }
-        else {
+//        else {
             try {
                 Class<MetadataHandler> clazz = (Class<MetadataHandler>) Class.forName(handler);
-                Constructor<MetadataHandler> constructor = clazz.getConstructor(SOSMetadata.class);
+                Constructor<MetadataHandler> constructor = clazz.getConstructor(metadata.getClass());
                 return constructor.newInstance(metadata);
             }
             catch (ClassNotFoundException e) {
@@ -305,15 +343,50 @@ public class ConfigurationContext implements ServletContextAware {
             catch (InvocationTargetException e) {
                 throw new RuntimeException("Instantiation of metadata handler failed.", e);
             }
-        }
+//        }
     }
 
-    public static boolean isMetadataAvailable(String sosURL) {
+    @SuppressWarnings("unchecked")
+    public static MetadataHandler createMetadataHandler(Metadata metadata) {
+    	 String handler = metadata.getMetadataHandler();
+         if (handler == null) {
+             LOGGER.info("Using default metadata handler for '{}'", metadata.getServiceUrl());
+             handler = metadata.getDefaultMetadataHandler();
+         }
+//         else {
+             try {
+                 Class<? extends MetadataHandler> clazz = (Class<? extends MetadataHandler>) Class.forName(handler);
+                 Constructor<? extends MetadataHandler> constructor = clazz.getConstructor(metadata.getClass());
+                 return constructor.newInstance(metadata);
+             }
+             catch (ClassNotFoundException e) {
+                 throw new RuntimeException(String.format("Could not find metadata handler class '%s'.", handler), e);
+             }
+             catch (NoSuchMethodException e) {
+                 throw new RuntimeException("Invalid metadata handler constructor. ", e);
+             }
+             catch (InstantiationException e) {
+                 throw new RuntimeException("Could not create metadata handler.", e);
+             }
+             catch (IllegalAccessException e) {
+                 throw new RuntimeException("Not allowed to create metadata handler.", e);
+             }
+             catch (InvocationTargetException e) {
+                 throw new RuntimeException("Instantiation of metadata handler failed.", e);
+             }
+//         }
+	}
+
+	public static boolean isMetadataAvailable(String sosURL) {
         return containsServiceMetadata(sosURL) && serviceMetadatas.get(sosURL).isInitialized();
     }
 
     public static boolean containsServiceMetadata(String sosURL) {
         return serviceMetadatas.containsKey(sosURL) && serviceMetadatas.get(sosURL) != null;
+    }
+    
+    public static boolean containsSosMetadata(String sosURL) {
+        return serviceMetadatas.containsKey(sosURL) && serviceMetadatas.get(sosURL) != null && serviceMetadatas.get(sosURL) instanceof SOSMetadata;
     }
 
     public static boolean containsServiceInstance(String instance) {
@@ -335,43 +408,66 @@ public class ConfigurationContext implements ServletContextAware {
     }
 
     private static String getVersion(String sosURL) throws TimeoutException, Exception {
-        SOSMetadata serviceMetadata = serviceMetadatas.get(sosURL);
+        Metadata serviceMetadata = serviceMetadatas.get(sosURL);
         if (serviceMetadata != null) {
             return serviceMetadata.getVersion();
         }
         else {
-            return getSOSMetadata(sosURL).getVersion();
+            return getMetadata(sosURL).getVersion();
         }
     }
 
-    public static void initializeMetadata(SOSMetadata metadata) {
-        SOSMetadata old = serviceMetadatas.put(metadata.getServiceUrl(), metadata);
-        LOGGER.debug(old == null ? "SOS metadata initialized." : "SOS metadata replaced with " + metadata);
+    public static void initializeMetadata(Metadata metadata) {
+        Metadata old = serviceMetadatas.put(metadata.getServiceUrl(), metadata);
+        LOGGER.debug(old == null ? "metadata initialized." : "metadata replaced with " + metadata);
         metadata.setInitialized(true);
     }
-
-    public static void addNewSOSMetadata(SOSMetadata metadata) {
+    
+    public static void addNewMetadata(Metadata metadata) {
         String serviceURL = metadata.getServiceUrl();
-        LOGGER.debug(String.format("Add new SOS metadata for '%s' ", serviceURL));
+        LOGGER.debug(String.format("Add new metadata for '%s' ", serviceURL));
         serviceMetadatas.put(serviceURL, metadata);
+    }
+
+    public static Map<String, Metadata> updateMetadata() {
+        LOGGER.debug("Update protected services");
+        Map<String, Metadata> updatedMetadatas = new HashMap<String, Metadata>();
+        for (String metadataKey : serviceMetadatas.keySet()) {
+            Metadata metadata = serviceMetadatas.get(metadataKey);
+            if (metadata.isProtectedService()) {
+                try {
+                    MetadataHandler metadataHandler = ConfigurationContext.createMetadataHandler(metadata);
+                    Metadata updatedMetadata = metadataHandler.updateMetadata(metadata);
+                    updatedMetadatas.put(updatedMetadata.getServiceUrl(), updatedMetadata);
+                    LOGGER.debug("Update metadata for service with url '{}'", updatedMetadata.getServiceUrl());
+                }
+                catch (Exception e) {
+                    LOGGER.error("Could not update {} ", metadata, e);
+                }
+            }
+        }
+        LOGGER.debug("Update #{} protected services", updatedMetadatas.size());
+        return updatedMetadatas;
     }
 
     public static Map<String, SOSMetadata> updateSOSMetadata() {
         LOGGER.debug("Update protected services");
         Map<String, SOSMetadata> updatedMetadatas = new HashMap<String, SOSMetadata>();
         for (String metadataKey : serviceMetadatas.keySet()) {
-            SOSMetadata sosMetadata = serviceMetadatas.get(metadataKey);
-            if (sosMetadata.isProtectedService()) {
-                try {
-                    MetadataHandler metadataHandler = ConfigurationContext.createSosMetadataHandler(sosMetadata);
-                    SOSMetadata updatedMetadata = metadataHandler.updateMetadata(sosMetadata);
-                    updatedMetadatas.put(updatedMetadata.getServiceUrl(), updatedMetadata);
-                    LOGGER.debug("Update metadata for service with url '{}'", updatedMetadata.getServiceUrl());
-                }
-                catch (Exception e) {
-                    LOGGER.error("Could not update {} ", sosMetadata, e);
-                }
-            }
+        	if (serviceMetadatas.get(metadataKey) instanceof SOSMetadata) {
+	            SOSMetadata sosMetadata = (SOSMetadata)serviceMetadatas.get(metadataKey);
+	            if (sosMetadata.isProtectedService()) {
+	                try {
+	                    MetadataHandler metadataHandler = ConfigurationContext.createSosMetadataHandler(sosMetadata);
+	                    SOSMetadata updatedMetadata = (SOSMetadata)metadataHandler.updateMetadata(sosMetadata);
+	                    updatedMetadatas.put(updatedMetadata.getServiceUrl(), updatedMetadata);
+	                    LOGGER.debug("Update metadata for service with url '{}'", updatedMetadata.getServiceUrl());
+	                }
+	                catch (Exception e) {
+	                    LOGGER.error("Could not update {} ", sosMetadata, e);
+	                }
+	            }
+        	}
         }
         LOGGER.debug("Update #{} protected services", updatedMetadatas.size());
         return updatedMetadatas;
