@@ -37,12 +37,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeoutException;
 
+import org.n52.oxf.adapter.IServiceAdapter;
 import org.n52.oxf.ows.ServiceDescriptor;
 import org.n52.oxf.ows.capabilities.IBoundingBox;
 import org.n52.oxf.ows.capabilities.Operation;
 import org.n52.oxf.ows.capabilities.OperationsMetadata;
 import org.n52.oxf.ows.capabilities.Parameter;
-import org.n52.oxf.sos.adapter.SOSAdapter;
 import org.n52.oxf.sos.capabilities.ObservationOffering;
 import org.n52.oxf.sos.util.SosUtil;
 import org.n52.oxf.valueDomains.StringValueDomain;
@@ -61,7 +61,7 @@ public class ConnectorUtils {
      * @return the service's {@link ServiceDescriptor} representing its capabilities
      * @throws IllegalStateException if service's {@link ServiceDescriptor} cannot be loaded from service endpoint.
      */
-    public static ServiceDescriptor getServiceDescriptor(final String sosUrl, final SOSAdapter adapter) {
+    public static ServiceDescriptor getServiceDescriptor(final String sosUrl, final IServiceAdapter adapter) {
         try {
             /* TODO SOSWrapper is not capable of intercepting custom IRequestBuilders yet! */
 //            ServiceDescriptor descriptor = SOSWrapper.doGetCapabilities(sosUrl, adapter.getServiceVersion());
@@ -173,6 +173,31 @@ public class ConnectorUtils {
         } else {
             if (!sosBbox.containsValue(offering.getBoundingBoxes()[0])) {
                 final IBoundingBox newBbox = offering.getBoundingBoxes()[0];
+                // lower left
+                if (sosBbox.getLowerCorner()[0] > newBbox.getLowerCorner()[0]) {
+                    sosBbox.getLowerCorner()[0] = newBbox.getLowerCorner()[0];
+                }
+                if (sosBbox.getLowerCorner()[1] > newBbox.getLowerCorner()[1]) {
+                    sosBbox.getLowerCorner()[1] = newBbox.getLowerCorner()[1];
+                }
+                // upper right
+                if (sosBbox.getUpperCorner()[0] < newBbox.getUpperCorner()[0]) {
+                    sosBbox.getUpperCorner()[0] = newBbox.getUpperCorner()[0];
+                }
+                if (sosBbox.getUpperCorner()[1] < newBbox.getUpperCorner()[1]) {
+                    sosBbox.getUpperCorner()[1] = newBbox.getUpperCorner()[1];
+                }
+            }
+        }
+        return sosBbox;
+    }
+    
+    public static IBoundingBox createBbox(IBoundingBox sosBbox, final IBoundingBox bboxToAdd) {
+        if (sosBbox == null) {
+            sosBbox = bboxToAdd;
+        } else {
+            if (!sosBbox.containsValue(bboxToAdd)){
+                final IBoundingBox newBbox = bboxToAdd;
                 // lower left
                 if (sosBbox.getLowerCorner()[0] > newBbox.getLowerCorner()[0]) {
                     sosBbox.getLowerCorner()[0] = newBbox.getLowerCorner()[0];
