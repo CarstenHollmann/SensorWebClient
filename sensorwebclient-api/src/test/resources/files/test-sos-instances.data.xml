@@ -106,5 +106,21 @@
 		<requestChunk>200</requestChunk>
 		<autoZoom>true</autoZoom>
 	</instance>
+	
+	<instance>
+		<itemName>SensorThings</itemName>
+		<service>SensorThings</service>
+		<url>http://52north.org/SensorThings/v1.0</url>
+		<version>1.0.0</version>
+		<metadataHandler>org.n52.server.oxf.util.parser.DefaultMetadataHandler</metadataHandler>
+		<adapter>org.n52.server.oxf.util.access.oxfExtensions.SOSAdapter_OXFExtension</adapter>
+		<llEasting>6.61</llEasting>
+		<llNorthing>51.246</llNorthing>
+		<urEasting>7.81</urEasting>
+		<urNorthing>51.793</urNorthing>
+		<defaultZoom>15</defaultZoom>
+		<requestChunk>200</requestChunk>
+		<autoZoom>true</autoZoom>
+	</instance>
 
 </instances>
