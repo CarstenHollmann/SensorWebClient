@@ -104,7 +104,7 @@ public class DefaultFOIMetadataHandler extends DefaultMetadataHandler {
             InterruptedException,
             XMLHandlingException {
 
-        final SOSMetadata sosMetadata = initMetadata();
+        final SOSMetadata sosMetadata = (SOSMetadata)initMetadata();
         final Collection<SosTimeseries> observingTimeseries = createObservingTimeseries(getServiceVersion());
 
         normalizeDefaultCategories(observingTimeseries);

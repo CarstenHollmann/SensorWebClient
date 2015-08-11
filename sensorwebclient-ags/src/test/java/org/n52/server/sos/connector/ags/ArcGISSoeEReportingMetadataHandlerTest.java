@@ -113,7 +113,7 @@ public class ArcGISSoeEReportingMetadataHandlerTest {
         @Override
         protected SOSMetadata initMetadata() {
             setSosAdapter(new ResponseFromFileSosAdapter(CAPABILITIES_EREPORTING));
-            return super.initMetadata();
+            return (SOSMetadata)super.initMetadata();
         }
 
         @Override

@@ -36,7 +36,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.n52.server.mgmt.ConfigurationContext;
-import org.n52.server.mgmt.SosMetadataUpdate;
+import org.n52.server.mgmt.MetadataUpdate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +51,7 @@ public class ReloadCacheServlet extends HttpServlet {
     	ServletOutputStream out = resp.getOutputStream();
         try {
             if (Boolean.parseBoolean(req.getParameter("reloadCache"))) {
-                SosMetadataUpdate.updateSosServices(ConfigurationContext.getServiceMetadatas().keySet());
+                MetadataUpdate.updateServices(ConfigurationContext.getServiceMetadatas().keySet());
             }
             out.write(new String("Cache reloaded successfully").getBytes());
         } catch (Exception e) {

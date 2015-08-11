@@ -29,10 +29,12 @@ package org.n52.server.da.oxf;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.n52.server.da.oxf.DescribeSensorAccessor.getSensorDescriptionAsSensorML;
-import static org.n52.server.mgmt.ConfigurationContext.*;
+import static org.n52.server.mgmt.ConfigurationContext.SERVER_TIMEOUT;
+import static org.n52.server.mgmt.ConfigurationContext.getSOSMetadata;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,9 +56,9 @@ import org.n52.oxf.sos.adapter.SOSAdapter;
 import org.n52.oxf.sos.util.SosUtil;
 import org.n52.oxf.xmlbeans.parser.XMLHandlingException;
 import org.n52.server.da.AccessorThreadPool;
-import org.n52.server.da.MetadataHandler;
 import org.n52.server.mgmt.ConfigurationContext;
 import org.n52.server.parser.DescribeSensorParser;
+import org.n52.shared.Metadata;
 import org.n52.shared.serializable.pojos.TimeseriesProperties;
 import org.n52.shared.serializable.pojos.sos.Feature;
 import org.n52.shared.serializable.pojos.sos.Phenomenon;
@@ -71,16 +73,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.vividsolutions.jts.geom.Point;
-import java.io.InputStream;
 
-public class DefaultMetadataHandler extends MetadataHandler {
+public class DefaultMetadataHandler extends AbstractSosMetadataHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultMetadataHandler.class);
 
     public DefaultMetadataHandler(final SOSMetadata metadata) {
         super(metadata);
     }
-
+    
     /*
      * Assembles timeseries' metadata by performing DescribeSensor request and parsing the returned  SensorML.
      *
@@ -105,7 +106,7 @@ public class DefaultMetadataHandler extends MetadataHandler {
             InterruptedException,
             XMLHandlingException {
 
-        final SOSMetadata sosMetadata = initMetadata();
+        final SOSMetadata sosMetadata = (SOSMetadata) initMetadata();
         final Collection<SosTimeseries> observingTimeseries = createObservingTimeseries(getServiceVersion());
 
         normalizeDefaultCategories(observingTimeseries);
@@ -121,6 +122,11 @@ public class DefaultMetadataHandler extends MetadataHandler {
         }
         sosMetadata.setInitialized(true);
         return sosMetadata;
+    }
+    
+    @Override
+    public Metadata updateMetadata(Metadata metadata) throws Exception {
+    	return null;
     }
 
     /**
@@ -316,11 +322,11 @@ public class DefaultMetadataHandler extends MetadataHandler {
         }
         return result;
     }
-
-    @Override
-    public SOSMetadata updateMetadata(final SOSMetadata metadata) throws Exception {
-        // TODO Auto-generated method stub
-        return null;
-    }
+//
+//    @Override
+//    public SOSMetadata updateMetadata(final SOSMetadata metadata) throws Exception {
+//        // TODO Auto-generated method stub
+//        return metadata;
+//    }
 
 }

@@ -35,11 +35,15 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import java.util.concurrent.TimeoutException;
+
 import net.opengis.om.x20.OMObservationType;
 import net.opengis.sos.x20.GetObservationResponseDocument;
 import net.opengis.sos.x20.GetObservationResponseType;
+
 import org.apache.xmlbeans.SimpleValue;
 import org.apache.xmlbeans.XmlException;
 import org.apache.xmlbeans.XmlObject;
@@ -49,18 +53,26 @@ import org.n52.oxf.adapter.OperationResult;
 import org.n52.oxf.adapter.ParameterContainer;
 import org.n52.oxf.ows.capabilities.Operation;
 import org.n52.oxf.sos.adapter.ISOSRequestBuilder;
+
 import static org.n52.oxf.sos.adapter.ISOSRequestBuilder.GET_FOI_SERVICE_PARAMETER;
 import static org.n52.oxf.sos.adapter.ISOSRequestBuilder.GET_FOI_VERSION_PARAMETER;
 import static org.n52.oxf.sos.adapter.SOSAdapter.GET_FEATURE_OF_INTEREST;
+
 import org.n52.server.da.AccessorThreadPool;
 import org.n52.server.da.MetadataHandler;
+import org.n52.server.da.oxf.AbstractSosMetadataHandler;
 import org.n52.server.da.oxf.OperationAccessor;
+
 import static org.n52.server.mgmt.ConfigurationContext.getSOSMetadata;
+
 import org.n52.server.parser.ConnectorUtils;
 import org.n52.server.parser.GetFeatureOfInterestParser;
+
 import static org.n52.server.sos.connector.hydro.SOSwithSoapAdapter.GET_DATA_AVAILABILITY;
+
 import org.n52.server.util.PropertiesToHtml;
 import org.n52.server.util.XmlHelper;
+import org.n52.shared.Metadata;
 import org.n52.shared.serializable.pojos.TimeseriesProperties;
 import org.n52.shared.serializable.pojos.sos.Category;
 import org.n52.shared.serializable.pojos.sos.Feature;
@@ -75,7 +87,7 @@ import org.n52.shared.serializable.pojos.sos.TimeseriesParametersLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HydroMetadataHandler extends MetadataHandler {
+public class HydroMetadataHandler extends AbstractSosMetadataHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HydroMetadataHandler.class);
 
@@ -126,7 +138,7 @@ public class HydroMetadataHandler extends MetadataHandler {
     @Override
     public SOSMetadata performMetadataCompletion() throws Exception {
     	LOGGER.info("Start perform metadata completion");
-        SOSMetadata metadata = initMetadata();
+        SOSMetadata metadata = (SOSMetadata)initMetadata();
         LOGGER.info("init of metadata finished");
         // get a waterml specific responseFormat if set
         String responseFormat = ConnectorUtils.getResponseFormat(getServiceDescriptor(), "waterml");
@@ -138,8 +150,8 @@ public class HydroMetadataHandler extends MetadataHandler {
     }
 
     @Override
-    public SOSMetadata updateMetadata(SOSMetadata metadata) throws Exception {
-        SOSMetadata newMetadata = metadata.clone();
+    public Metadata updateMetadata(Metadata metadata) throws Exception {
+        SOSMetadata newMetadata = ((SOSMetadata)metadata).clone();
         initMetadata();
         collectTimeseries(newMetadata);
         return newMetadata;

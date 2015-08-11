@@ -74,6 +74,7 @@ import static org.n52.oxf.sos.adapter.SOSAdapter.DESCRIBE_SENSOR;
 
 import org.n52.oxf.sos.capabilities.ObservationOffering;
 import org.n52.server.da.MetadataHandler;
+import org.n52.server.da.oxf.AbstractSosMetadataHandler;
 import org.n52.server.da.oxf.ResponseExceedsSizeLimitException;
 
 import static org.n52.server.da.oxf.DescribeSensorAccessor.getSensorDescriptionAsSensorML;
@@ -81,6 +82,7 @@ import static org.n52.server.mgmt.ConfigurationContext.getSOSMetadata;
 
 import org.n52.server.util.PropertiesToHtml;
 import org.n52.server.util.XmlHelper;
+import org.n52.shared.Metadata;
 import org.n52.shared.serializable.pojos.TimeseriesProperties;
 import org.n52.shared.serializable.pojos.sos.Category;
 import org.n52.shared.serializable.pojos.sos.Feature;
@@ -95,7 +97,7 @@ import org.n52.shared.serializable.pojos.sos.TimeseriesParametersLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ArcGISSoeEReportingMetadataHandler extends MetadataHandler {
+public class ArcGISSoeEReportingMetadataHandler extends AbstractSosMetadataHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ArcGISSoeEReportingMetadataHandler.class);
 
@@ -153,7 +155,7 @@ public class ArcGISSoeEReportingMetadataHandler extends MetadataHandler {
     @Override
     public SOSMetadata performMetadataCompletion() throws Exception {
         String sosUrl = getServiceUrl();
-        SOSMetadata metadata = initMetadata();
+        SOSMetadata metadata = (SOSMetadata)initMetadata();
 
         Collection<SosTimeseries> observingTimeseries = createObservingTimeseries(sosUrl);
         TimeseriesParametersLookup lookup = metadata.getTimeseriesParametersLookup();
@@ -381,9 +383,9 @@ public class ArcGISSoeEReportingMetadataHandler extends MetadataHandler {
         return sensorDescriptions.containsKey(procedure);
     }
 
-    @Override
-    public SOSMetadata updateMetadata(SOSMetadata metadata) throws Exception {
-        throw new UnsupportedOperationException();
-    }
+	@Override
+	public Metadata updateMetadata(Metadata metadata) throws Exception {
+		throw new UnsupportedOperationException();
+	}
 
 }

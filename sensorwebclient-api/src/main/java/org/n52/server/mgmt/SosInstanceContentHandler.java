@@ -27,8 +27,8 @@
  */
 package org.n52.server.mgmt;
 
-import org.n52.shared.serializable.pojos.sos.SOSMetadata;
-import org.n52.shared.serializable.pojos.sos.SOSMetadataBuilder;
+import org.n52.server.da.InstatiationMetadataBuilder;
+import org.n52.shared.Metadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
@@ -41,14 +41,16 @@ public class SosInstanceContentHandler extends DefaultHandler {
 
     enum TagNames {
 
-        INSTANCE, ITEMNAME, URL, VERSION, METADATAHANDLER, ADAPTER, WATERML, TIMEOUT, LLEASTING, LLNORTHING, UREASTING, URNORTHING, DEFAULTZOOM, AUTOZOOM, REQUESTCHUNK, FORCEXYAXISORDER, PROTECTEDSERVICE, NOELEMENT, SUPPORTSFIRSTLATEST, ENABLEEVENTING, GDAPREFINAL, HTTPCONNECTIONPOOLSIZE;
+        INSTANCE, ITEMNAME, URL, VERSION, METADATAHANDLER, ADAPTER, WATERML, TIMEOUT, LLEASTING, LLNORTHING, UREASTING, URNORTHING, DEFAULTZOOM, AUTOZOOM, REQUESTCHUNK, FORCEXYAXISORDER, PROTECTEDSERVICE, NOELEMENT, SUPPORTSFIRSTLATEST, ENABLEEVENTING, GDAPREFINAL, HTTPCONNECTIONPOOLSIZE, SERVICE;
     }
 
-    private SOSMetadataBuilder currentBuilder = new SOSMetadataBuilder();
-
+    private InstatiationMetadataBuilder currentBuilder = new InstatiationMetadataBuilder();
+    
     private StringBuffer currentContent = new StringBuffer();
 
     private TagNames currentElement;
+    
+    private String service;
 
     protected SosInstanceContentHandler() {
     }
@@ -57,6 +59,8 @@ public class SosInstanceContentHandler extends DefaultHandler {
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
         if (TagNames.INSTANCE.name().equalsIgnoreCase(qName)) {
             currentElement = TagNames.INSTANCE;
+        } else if (TagNames.SERVICE.name().equalsIgnoreCase(qName)) {
+            currentElement = TagNames.SERVICE;
         } else if (TagNames.ITEMNAME.name().equalsIgnoreCase(qName)) {
             currentElement = TagNames.ITEMNAME;
         } else if (TagNames.DEFAULTZOOM.name().equalsIgnoreCase(qName)) {
@@ -108,10 +112,11 @@ public class SosInstanceContentHandler extends DefaultHandler {
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
         if (TagNames.INSTANCE.name().equalsIgnoreCase(qName)) {
-            SOSMetadata metadata = currentBuilder.build();
+            Metadata metadata = currentBuilder.build(service);
             LOG.debug("New SOS metadata: {}", metadata);
-            ConfigurationContext.addNewSOSMetadata(metadata);
-            currentBuilder = new SOSMetadataBuilder();
+            ConfigurationContext.addNewMetadata(metadata);
+            currentBuilder = new InstatiationMetadataBuilder();
+            service = null;
         }
 
         String parsedCharacters = currentContent.toString();
@@ -119,6 +124,9 @@ public class SosInstanceContentHandler extends DefaultHandler {
             if (isParsableContent(parsedCharacters)) {
                 switch (currentElement) {
                     case NOELEMENT:
+                        break;
+                    case SERVICE:
+                        service = parsedCharacters;
                         break;
                     case ITEMNAME:
                         String itemName = parsedCharacters;
@@ -178,7 +186,7 @@ public class SosInstanceContentHandler extends DefaultHandler {
                         break;
                     case METADATAHANDLER:
                         String connector = parsedCharacters;
-                        currentBuilder.addSosMetadataHandler(connector);
+                        currentBuilder.addMetadataHandler(connector);
                         break;
                     case ADAPTER:
                         String adapter = parsedCharacters;

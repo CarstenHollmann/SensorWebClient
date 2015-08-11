@@ -37,7 +37,7 @@ import java.net.URL;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.n52.server.mgmt.SosMetadataUpdate;
+import org.n52.server.mgmt.MetadataUpdate;
 import org.n52.shared.serializable.pojos.sos.SOSMetadata;
 import org.n52.shared.serializable.pojos.sos.SOSMetadataBuilder;
 
@@ -67,27 +67,27 @@ public class SosMetadataUpdateTest {
 
     @Test
     public void testCreatePostfix() {
-        String postfix = SosMetadataUpdate.createPostfix(validServiceUrl);
+        String postfix = MetadataUpdate.createPostfix(validServiceUrl);
         assertEquals("my.server.net_52n-SOS-Vx.x_sos", postfix);
     }
     
     @Test
     public void testGetCacheTarget() {
         File expected = new File(cacheTargetFile);
-        File cacheTarget = SosMetadataUpdate.getCacheTarget(validServiceUrl);
+        File cacheTarget = MetadataUpdate.getCacheTarget(validServiceUrl);
         assertEquals(expected.getAbsoluteFile(), cacheTarget.getAbsoluteFile());
     }
     
     @Test
     public void testPrepareCacheTarget() throws IOException {
-        SosMetadataUpdate.prepareCacheTargetDirectory();
+        MetadataUpdate.prepareCacheTargetDirectory();
         assertTrue(temporalCacheDirectory.exists());
     }
     
     //@Test
     public void testCacheMetadata() throws Exception {
         SOSMetadataBuilder builder = new SOSMetadataBuilder();
-        SOSMetadata metadata = builder.addServiceURL(validServiceUrl).addServiceVersion("1.0.0").build();
+        SOSMetadata metadata = (SOSMetadata)builder.addServiceURL(validServiceUrl).addServiceVersion("1.0.0").build();
 //        SosMetadataUpdate.cacheMetadata(temporalCacheDirectory, validServiceUrl);
         // TODO have to create mockup to test serialization?
     }

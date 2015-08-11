@@ -27,14 +27,13 @@
  */
 package org.n52.server.mgmt.schedule;
 
-import java.util.Date;
 import java.util.Set;
+
 import org.joda.time.DateTime;
 import org.n52.server.mgmt.ConfigurationContext;
-import org.n52.server.mgmt.SosMetadataUpdate;
+import org.n52.server.mgmt.MetadataUpdate;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
-import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -77,13 +76,13 @@ public class CacheUpdateJob extends ScheduledJob implements Job {
 
             if (shallRewriteAtStartup(context)) {
                 LOGGER.info("Rewriting cache at startup.");
-                SosMetadataUpdate.invalidateCache();
+                MetadataUpdate.invalidateCache();
             }
             if (context.getPreviousFireTime() != null) {
                 LOGGER.info("Rewriting cache at startup.");
-                SosMetadataUpdate.invalidateCache();
+                MetadataUpdate.invalidateCache();
             }
-            SosMetadataUpdate.updateSosServices(sosUrls);
+            MetadataUpdate.updateServices(sosUrls);
             if (context.getNextFireTime() != null) {
                 LOGGER.info("Next update will be run at {}.", context.getNextFireTime());
             }

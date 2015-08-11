@@ -27,14 +27,12 @@
  */
 package org.n52.shared.serializable.pojos.sos;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.n52.io.crs.BoundingBox;
-import org.n52.shared.IdGenerator;
-import org.n52.shared.MD5HashGenerator;
+import org.n52.shared.Metadata;
+import org.n52.shared.MetadataBuilder;
 import org.n52.shared.requests.query.QueryParameters;
 
 /**
@@ -45,21 +43,11 @@ import org.n52.shared.requests.query.QueryParameters;
  *
  * TODO this above fact is based on historical reasons and have to refactored!
  */
-public class SOSMetadata implements Serializable {
+public class SOSMetadata extends Metadata {
 
     private static final long serialVersionUID = -3721927620888635622L;
-
-    private String serviceUrl; // mandatory
-
-    private String version; // mandatory
-
-    private String title = "NA";
-
-    private String sosMetadataHandler;
-
-    private String adapter;
-
-    private boolean initialized = false;
+    
+    private static final String DEFAULT_METADATA_HANDLER = "org.n52.server.da.oxf.DefaultMetadataHandler";
 
     private String sensorMLVersion;
 
@@ -73,45 +61,14 @@ public class SOSMetadata implements Serializable {
 
     private HashMap<String, Station> stations = new HashMap<String, Station>();
 
-    private boolean hasDonePositionRequest = false;
-
-    private String configuredItemName;
-
-    private String srs;
-
-    private boolean canGeneralize = false; // default
-
-    private boolean waterML = false; // default
-
-    private boolean eventing = false; // default
-
-    private boolean autoZoom = true; // default
-
-    private boolean protectedService = false; // default
-
-    private int requestChunk = 300; // default
-
-    private int timeout = 10000; // default
-
-    private boolean forceXYAxisOrder = false; // default
-
-    private boolean supportsFirstLatest = false; // default
-
-    private boolean gdaPrefinal = false; // default
-
-    private int httpConnectionPoolSize = 50; // default
-
-    private BoundingBox configuredExtent;
-
     @SuppressWarnings("unused")
     private SOSMetadata() {
+    	super();
         // for serialization
     }
 
     public SOSMetadata(String url, String sosVersion, String sensorMLVersion, String omVersion, String title) {
-        this(url);
-        this.title = title;
-        this.version = sosVersion;
+    	super(url, title, sosVersion);
         this.sensorMLVersion = sensorMLVersion;
         this.omVersion = omVersion;
     }
@@ -119,7 +76,7 @@ public class SOSMetadata implements Serializable {
     @Deprecated
     public SOSMetadata(String id, String title) {
         this(id);
-        this.title = title;
+        setTitle(title);
     }
 
     /**
@@ -129,7 +86,7 @@ public class SOSMetadata implements Serializable {
      */
     @Deprecated
     public SOSMetadata(String serviceUrl) {
-        this.serviceUrl = serviceUrl;
+        setServiceUrl(serviceUrl);
     }
 
     /**
@@ -144,94 +101,28 @@ public class SOSMetadata implements Serializable {
      *        the supported version
      */
     public SOSMetadata(String url, String title, String version) {
-        this(url, title);
-        this.version = version;
+    	super(url, title, version);
     }
 
-    public SOSMetadata(SOSMetadataBuilder builder) {
-        this(builder.getServiceURL(), builder.getServiceName());
-        this.version = builder.getServiceVersion();
-        this.configuredItemName = builder.getServiceName();
-        this.waterML = builder.isWaterML();
-        this.autoZoom = builder.isAutoZoom();
-        this.forceXYAxisOrder = builder.isForceXYAxisOrder();
-        this.supportsFirstLatest = builder.isSupportsFirstLatest();
-        this.requestChunk = builder.getRequestChunk();
-        this.timeout = builder.getTimeout();
-        this.configuredExtent = builder.getConfiguredServiceExtent();
-        this.protectedService = builder.isProctectedService();
-        this.eventing = builder.isEventing();
-        this.gdaPrefinal = builder.isGdaPrefinal();
-        this.httpConnectionPoolSize = builder.getHttpConnectionPoolSize();
-        this.setSosMetadataHandler(builder.getSosMetadataHandler());
-        this.setAdapter(builder.getAdapter());
+    public SOSMetadata(MetadataBuilder builder) {
+    	super(builder);
     }
 
-    public void setInitialized(boolean initialized) {
-        this.initialized = initialized;
-    }
+    @Override
+	public String getDefaultMetadataHandler() {
+		return DEFAULT_METADATA_HANDLER;
+	}
 
-    /**
-     * Indicates that the metadata has been filled with data requested from service.
-     */
-    public boolean isInitialized() {
-        return initialized;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    /**
+	/**
      * @return the configured SOS metadata handler or <code>null</code> when called from client side.
      */
     public String getSosMetadataHandler() {
-        return sosMetadataHandler;
+        return getMetadataHandler();
     }
 
     public final void setSosMetadataHandler(String handler) {
         // is null when used on client side
-        this.sosMetadataHandler = handler != null ? handler.trim() : null;
-    }
-
-    /**
-     * @return the configured SOS adapter or <code>null</code> when called from client side.
-     */
-    public String getAdapter() {
-        return adapter;
-    }
-
-    public final void setAdapter(String adapter) {
-        // is null when used on client side
-        this.adapter = adapter != null ? adapter.trim() : null;
-    }
-
-    public String getServiceUrl() {
-        return serviceUrl;
-    }
-
-    public String getSrs() {
-        return this.srs;
-    }
-
-    public void setSrs(String srs) {
-        this.srs = srs;
-    }
-
-    public String getTitle() {
-        return this.title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getConfiguredItemName() {
-        return configuredItemName;
+        setMetadataHandler(handler != null ? handler.trim() : null);
     }
 
     public String getSosVersion() {
@@ -256,69 +147,6 @@ public class SOSMetadata implements Serializable {
 
     public void setOmVersion(String omVersion) {
         this.omVersion = omVersion;
-    }
-
-    public boolean hasDonePositionRequest() {
-        return this.hasDonePositionRequest;
-    }
-
-    public void setHasDonePositionRequest(boolean hasDonePositionRequest) {
-        this.hasDonePositionRequest = hasDonePositionRequest;
-    }
-
-    public boolean canGeneralize() {
-        return canGeneralize;
-    }
-
-    public void setCanGeneralize(boolean canGeneralize) {
-        this.canGeneralize = canGeneralize;
-    }
-
-    public boolean isWaterML() {
-        return waterML;
-    }
-
-    public boolean isEventing() {
-        return eventing;
-    }
-
-    public boolean isAutoZoom() {
-        return autoZoom;
-    }
-
-    public boolean isForceXYAxisOrder() {
-        return forceXYAxisOrder;
-    }
-
-    public boolean isSupportsFirstLatest() {
-        return supportsFirstLatest;
-    }
-
-    public boolean isGdaPrefinal() {
-        return gdaPrefinal;
-    }
-
-    public int getHttpConnectionPoolSize() {
-        return httpConnectionPoolSize;
-    }
-
-    public boolean isProtectedService() {
-        return protectedService;
-    }
-
-    public int getRequestChunk() {
-        return requestChunk;
-    }
-
-    public int getTimeout() {
-        return timeout;
-    }
-
-    /**
-     * @return the service's extent.
-     */
-    public BoundingBox getConfiguredExtent() {
-        return configuredExtent;
     }
 
     public void addStation(Station station) {
@@ -411,75 +239,17 @@ public class SOSMetadata implements Serializable {
 		this.procedureFormats = procedureFormats;
 	}
 
-	@Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("SOSMetadata [ ");
-        sb.append("parameterId: ").append(serviceUrl).append(", ");
-        sb.append("initialized: ").append(initialized).append(", ");
-        sb.append("version: ").append(version);
-        sb.append(" ]");
-        return sb.toString();
-    }
-
     public SOSMetadata clone() {
-        SOSMetadata clone = new SOSMetadata(this.serviceUrl,
-                                            this.version,
+        SOSMetadata clone = new SOSMetadata(getServiceUrl(),
+                                            getVersion(),
                                             this.sensorMLVersion,
                                             this.omVersion,
-                                            this.title);
-        clone.waterML = this.waterML;
-        clone.autoZoom = this.autoZoom;
-        clone.forceXYAxisOrder = this.forceXYAxisOrder;
-        clone.requestChunk = this.requestChunk;
-        clone.timeout = this.timeout;
-        clone.eventing = this.eventing;
-        clone.configuredExtent = this.configuredExtent;
-        clone.protectedService = this.protectedService;
+                                            getTitle());
+        super.clone(clone);
         clone.observationFormats = this.observationFormats;
         clone.procedureFormats = this.procedureFormats;
-        clone.setSosMetadataHandler(this.getSosMetadataHandler());
-        clone.setAdapter(this.getAdapter());
         return clone;
     }
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ( (serviceUrl == null) ? 0 : serviceUrl.hashCode());
-        result = prime * result + ( (version == null) ? 0 : version.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        SOSMetadata other = (SOSMetadata) obj;
-        if (serviceUrl == null) {
-            if (other.serviceUrl != null)
-                return false;
-        }
-        else if ( !serviceUrl.equals(other.serviceUrl))
-            return false;
-        if (version == null) {
-            if (other.version != null)
-                return false;
-        }
-        else if ( !version.equals(other.version))
-            return false;
-        return true;
-    }
-
-    public String getGlobalId() {
-        String[] parameters = new String[] {serviceUrl, version};
-        IdGenerator idGenerator = new MD5HashGenerator("srv_");
-        return idGenerator.generate(parameters);
-    }
 
 }

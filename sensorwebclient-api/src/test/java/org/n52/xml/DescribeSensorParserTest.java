@@ -101,7 +101,7 @@ public class DescribeSensorParserTest {
     }
     
     private SOSMetadata getSimpleMetadata() {
-        return new SOSMetadata(new SOSMetadataBuilder().addServiceVersion("2.0.0"));
+        return new SOSMetadata((SOSMetadataBuilder)new SOSMetadataBuilder().addServiceVersion("2.0.0"));
     }
 
     @Test 
@@ -168,7 +168,7 @@ public class DescribeSensorParserTest {
 
     
     private SOSMetadata getForceXYOrderingMetadata() {
-        return new SOSMetadata(new SOSMetadataBuilder().addServiceVersion("2.0.0").setForceXYAxisOrder(true));
+        return new SOSMetadata((SOSMetadataBuilder)new SOSMetadataBuilder().addServiceVersion("2.0.0").setForceXYAxisOrder(true));
     }
 
     private DescribeSensorParser createParserFromFile(XmlObject sensorML, SOSMetadata metadata) {

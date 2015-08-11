@@ -43,6 +43,8 @@ import javax.xml.parsers.SAXParserFactory;
 import org.junit.Test;
 import org.n52.server.mgmt.ConfigurationContext;
 import org.n52.server.mgmt.SosInstanceContentHandler;
+import org.n52.shared.Metadata;
+import org.n52.shared.serializable.pojos.sensorthings.SensorThingsMetadata;
 import org.n52.shared.serializable.pojos.sos.SOSMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +60,8 @@ public class SosInstanceContentHandlerTest {
     private static final String IRCELINE_URL = "http://sos.irceline.be/sos";
 
     private static final String FLUGGS_URL = "http://fluggs.wupperverband.de/sos/sos";
+    
+    private static final String SENSOR_THINGS_URL = "http://52north.org/SensorThings/v1.0";
 
     private static final String DEFAULT_CONNECTOR = "org.n52.server.oxf.util.parser.DefaultMetadataHandler";
 
@@ -79,15 +83,17 @@ public class SosInstanceContentHandlerTest {
             fail(String.format("Error parsing %s", SOS_INSTANCES_FILE));
         }
 
-        Map<String, SOSMetadata> serviceMetadatas = ConfigurationContext.getServiceMetadatas();
+        Map<String, Metadata> serviceMetadatas = ConfigurationContext.getServiceMetadatas();
         assertEquals("Unequal amount of SOS instances.", 4, ConfigurationContext.getSOSMetadatas().size());
         assertCorrectPegelOnline(serviceMetadatas.get(PEGELONLINE_URL));
         assertCorrectIrceLine(serviceMetadatas.get(IRCELINE_URL));
         assertCorrectEeaSos(serviceMetadatas.get(EEA_SOE_URL));
         assertCorrectFluggsSos(serviceMetadatas.get(FLUGGS_URL));
+        assertEquals("Unequal amount of instances.", 5, ConfigurationContext.getMetadatas().size());
+        assertCorrectSensorThings(serviceMetadatas.get(SENSOR_THINGS_URL));
     }
 
-    private void assertCorrectPegelOnline(SOSMetadata serviceMetadata) {
+    private void assertCorrectPegelOnline(Metadata serviceMetadata) {
         SOSMetadata metadata = (SOSMetadata) serviceMetadata;
         assertEquals(PEGELONLINE_URL, metadata.getServiceUrl());
         assertEquals("1.0.0", metadata.getVersion());
@@ -105,7 +111,7 @@ public class SosInstanceContentHandlerTest {
         // TODO check defaultZoom
     }
 
-    private void assertCorrectIrceLine(SOSMetadata serviceMetadata) {
+    private void assertCorrectIrceLine(Metadata serviceMetadata) {
         SOSMetadata metadata = (SOSMetadata) serviceMetadata;
         assertEquals(IRCELINE_URL, metadata.getServiceUrl());
         assertEquals("1.0.0", metadata.getVersion());
@@ -119,7 +125,7 @@ public class SosInstanceContentHandlerTest {
         // TODO check defaultZoom
     }
 
-    private void assertCorrectEeaSos(SOSMetadata serviceMetadata) {
+    private void assertCorrectEeaSos(Metadata serviceMetadata) {
         SOSMetadata metadata = (SOSMetadata) serviceMetadata;
         assertEquals(EEA_SOE_URL, metadata.getServiceUrl());
         assertEquals("2.0.0", metadata.getVersion());
@@ -133,7 +139,7 @@ public class SosInstanceContentHandlerTest {
         // TODO check defaultZoom
     }
 
-    private void assertCorrectFluggsSos(SOSMetadata serviceMetadata) {
+    private void assertCorrectFluggsSos(Metadata serviceMetadata) {
         SOSMetadata metadata = (SOSMetadata) serviceMetadata;
         assertEquals(FLUGGS_URL, metadata.getServiceUrl());
         assertEquals("1.0.0", metadata.getVersion());
@@ -147,7 +153,22 @@ public class SosInstanceContentHandlerTest {
         // TODO check defaultZoom
     }
 
-    private class MySosInstanceContentHandlerSeam extends SosInstanceContentHandler {
+    private void assertCorrectSensorThings(Metadata serviceMetadata) {
+    	assertTrue(serviceMetadata instanceof SensorThingsMetadata);
+    	SensorThingsMetadata metadata = (SensorThingsMetadata) serviceMetadata;
+    	assertEquals("SensorThings", metadata.getTitle());
+        assertEquals(SENSOR_THINGS_URL, metadata.getServiceUrl());
+        assertEquals("1.0.0", metadata.getVersion());
+        assertEquals(false, metadata.isWaterML());
+        assertEquals(DEFAULT_CONNECTOR, metadata.getMetadataHandler());
+        assertEquals(DEFAULT_ADAPTER, metadata.getAdapter());
+        assertEquals(200, metadata.getRequestChunk());
+        assertEquals(true, metadata.isAutoZoom());
+        assertFalse(metadata.isSupportsFirstLatest());
+		
+	}
+
+	private class MySosInstanceContentHandlerSeam extends SosInstanceContentHandler {
         MySosInstanceContentHandlerSeam() {}
     }
 }

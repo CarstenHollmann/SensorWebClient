@@ -192,8 +192,8 @@ public final class Application implements EntryPoint {
                         permalinkController.addTimeseries(sosTimeseries);
                     }
                     
-                    SOSMetadataBuilder builder = new SOSMetadataBuilder()
-                            .addServiceURL(service)
+                    SOSMetadataBuilder builder = new SOSMetadataBuilder();
+                    builder.addServiceURL(service)
                             .addServiceVersion(version);
                     SOSMetadata sosMetadata = new SOSMetadata(builder);
                     getMainEventBus().fireEvent(new StoreSOSMetadataEvent(sosMetadata));
