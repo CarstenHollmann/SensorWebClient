@@ -35,7 +35,7 @@ public class Feature extends TimeseriesParameter implements Serializable {
 
 	private static final long serialVersionUID = 693946840349140532L;
 
-	Feature() {
+	protected Feature() {
 		// for serialization
 	}
 

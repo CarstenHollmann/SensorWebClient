@@ -33,7 +33,7 @@ public class Category extends TimeseriesParameter implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	Category() {
+	protected Category() {
 		// for serialization
 	}
 	

@@ -37,7 +37,7 @@ public class Phenomenon extends TimeseriesParameter implements Serializable {
 
     private String unitOfMeasure;
 
-    Phenomenon() {
+    protected Phenomenon() {
         // for serialization
     }
 

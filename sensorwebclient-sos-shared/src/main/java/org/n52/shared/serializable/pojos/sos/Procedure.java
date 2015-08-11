@@ -41,7 +41,7 @@ public class Procedure extends TimeseriesParameter implements Serializable {
 
     private HashMap<String, ReferenceValue> refvalues = new HashMap<String, ReferenceValue>();
     
-    Procedure() {
+    protected Procedure() {
         // for serialization
     }
     

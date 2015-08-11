@@ -50,7 +50,7 @@ public class Station implements Serializable {
 
     private String label;
 
-    Station() {
+    protected Station() {
         // keep serializable
     }
 
