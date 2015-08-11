@@ -1,0 +1,32 @@
+{
+	"value":[
+		{
+			"name":"Things",
+			"url":"http://example.org/v1.0/Things"
+		},
+		{
+			"name":"Locations",
+			"url":" http://example.org/v1.0/Locations"
+		},
+		{
+			"name":"Datastreams",
+			"url":" http://example.org/v1.0/Datastreams"
+		},
+		{
+			"name":"Sensors",
+			"url":" http://example.org/v1.0/Sensors"
+		},
+		{
+			"name":"Observations",
+			"url":" http://example.org/v1.0/Observations"
+		},
+		{
+			"name":"ObservedProperties",
+			"url":" http://example.org/v1.0/ObservedProperties"
+		},
+		{
+			"name":"FeaturesOfInterest",
+			"url":" http://example.org/v1.0/FeaturesOfInterest"
+		}
+	]
+}

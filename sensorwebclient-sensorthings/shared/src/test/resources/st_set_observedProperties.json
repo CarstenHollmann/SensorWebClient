@@ -1,0 +1,23 @@
+{
+	"@iot.count":2,
+	"value":[
+		{
+			"@iot.id":1,
+			"@iot.selfLink":"http://example.org/v1.0/ObservedProperties(1)",
+			"Datastreams@iot.navigationLink":"ObservedProperties(1)/Datastreams",
+			"description":"The dew point is the temperature at which the water vapor in air at constant barometric pressure condenses into liquid water at the same rate at which it evaporates.",
+			"name":"DewPoint Temperature",
+			"definition":"http://dbpedia.org/page/Dew_point"
+		},
+		{
+			"@iot.id":2,
+			"@iot.selfLink":"http://example.org/v1.0/ObservedProperties(2)",
+			"Datastreams@iot.navigationLink":"ObservedProperties(2)/Datastreams",
+			"description":"Relative humidity is the ratio of the partial pressure of water vapor in an air-water mixture to the saturated vapor pressure of water at a prescribed temperature.",
+			"name":"Relative Humidity",
+			"definition":"http://dbpedia.org/page/Relative_humidity"
+		}
+		
+	],
+	"@iot.nextLink":"http://example.org/v1.0/ObservedProperties?$top=5&$skip=5"
+}
