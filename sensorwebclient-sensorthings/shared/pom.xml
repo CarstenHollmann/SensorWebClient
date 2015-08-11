@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.n52.sensorweb</groupId>
+		<artifactId>sensorwebclient-sensorthings</artifactId>
+		<version>3.3.0-rc.3-SNAPSHOT</version>
+	</parent>
+	<artifactId>sensorwebclient-sensorthings-shared</artifactId>
+	<packaging>jar</packaging>
+	<name>SensorThings-API Share interface</name>
+	<url>http://52north.org/communities/sensorweb/</url>
+	<dependencies>
+		<dependency>
+			<groupId>org.n52.sensorweb</groupId>
+			<artifactId>sensorwebclient-sos-shared</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.n52.sensorweb</groupId>
+            <artifactId>oxf-sos-adapter</artifactId>
+        </dependency>
+	</dependencies>
+</project>
