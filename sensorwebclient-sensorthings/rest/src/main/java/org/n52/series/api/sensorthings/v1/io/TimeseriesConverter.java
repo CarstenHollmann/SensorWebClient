@@ -44,8 +44,9 @@ import org.n52.io.v1.data.TimeseriesMetadataOutput;
 import org.n52.io.v1.data.TimeseriesOutput;
 import org.n52.io.v1.data.TimeseriesValue;
 import org.n52.shared.serializable.pojos.ReferenceValue;
+import org.n52.shared.serializable.pojos.sensorthings.SensorThingsDatastream;
 import org.n52.shared.serializable.pojos.sensorthings.SensorThingsMetadata;
-import org.n52.shared.serializable.pojos.sos.Phenomenon;
+import org.n52.shared.serializable.pojos.sos.Offering;
 import org.n52.shared.serializable.pojos.sos.Procedure;
 import org.n52.shared.serializable.pojos.sos.SosTimeseries;
 import org.n52.shared.serializable.pojos.sos.Station;
@@ -70,9 +71,15 @@ public class TimeseriesConverter extends OutputConverter<SosTimeseries, Timeseri
     @Override
     public TimeseriesMetadataOutput convertCondensed(SosTimeseries timeseries) {
         TimeseriesMetadataOutput convertedTimeseries = new TimeseriesMetadataOutput();
-        Phenomenon phenomenon = getLookup().getPhenomenon(timeseries.getPhenomenonId());
         convertedTimeseries.setStation(getCondensedStation(timeseries));
-        convertedTimeseries.setUom(phenomenon.getUnitOfMeasure());
+        Offering offering = getLookup().getOffering(timeseries.getOfferingId());
+        String unit = null;
+        if (offering instanceof SensorThingsDatastream) {
+        	unit = ((SensorThingsDatastream)offering).getUnitOfMeasurement().getSymbol();
+        } else {
+        	unit = getLookup().getPhenomenon(timeseries.getPhenomenonId()).getUnitOfMeasure();
+        }
+        convertedTimeseries.setUom(unit);
         convertedTimeseries.setId(timeseries.getTimeseriesId());
         convertedTimeseries.setLabel(timeseries.getLabel());
         return convertedTimeseries;
