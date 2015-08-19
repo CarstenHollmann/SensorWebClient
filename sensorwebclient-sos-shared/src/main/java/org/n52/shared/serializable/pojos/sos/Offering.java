@@ -37,7 +37,7 @@ public class Offering extends TimeseriesParameter implements Serializable {
 
     // TODO store responseFormat as it may vary for each offering
 
-    Offering() {
+    protected Offering() {
         // for serialization
     }
 

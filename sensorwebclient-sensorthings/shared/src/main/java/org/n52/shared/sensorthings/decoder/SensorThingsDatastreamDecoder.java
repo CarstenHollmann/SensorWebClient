@@ -48,8 +48,11 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class SensorThingsDatastreamDecoder extends AbstractSensorThingsDecoder<List<SensorThingsDatastream>> {
 	
-	public SensorThingsDatastreamDecoder(IServiceAdapter adapter) {
+	private String serviceUrl;
+	
+	public SensorThingsDatastreamDecoder(IServiceAdapter adapter, String serviceUrl) {
 		super(adapter);
+		this.serviceUrl = serviceUrl;
 	}
 	
 	@Override
@@ -86,7 +89,7 @@ public class SensorThingsDatastreamDecoder extends AbstractSensorThingsDecoder<L
 	
 	private SensorThingsDatastream parseDatastream(JsonNode node) {
 		if (node != null && !node.isMissingNode()) {
-			SensorThingsDatastream datastream = new SensorThingsDatastream(parseId(node));
+			SensorThingsDatastream datastream = new SensorThingsDatastream(parseId(node), serviceUrl);
 			datastream.setSelfLink(parseSelfLink(node));
 			datastream.setThingNavigationLink(parseNavigationLink(node, THING));
 			datastream.setSensorNavigationLink(parseNavigationLink(node, SENSOR));
@@ -102,7 +105,7 @@ public class SensorThingsDatastreamDecoder extends AbstractSensorThingsDecoder<L
 		}
 		return null;
 	}
-
+	
 	private List<SensorThingsDatastream> getNext(String link) throws IOException, ExceptionReport, OXFException {
 		return decode(getAdapter().doOperation(getOperation(link), new ParameterContainer()));
 	}
@@ -113,9 +116,10 @@ public class SensorThingsDatastreamDecoder extends AbstractSensorThingsDecoder<L
 
 	private UnitOfMeasruement parseUnitOfMeasurement(JsonNode node) {
 		UnitOfMeasruement unit = new UnitOfMeasruement();
-		unit.setName(parseName(node));
-		unit.setSymbol(parseSymbole(node));
-		unit.setDefinition(parseDefinition(node));
+		JsonNode checkNode = checkForObject(node, "unitOfMeasurement");
+		unit.setName(parseName(checkNode));
+		unit.setSymbol(parseSymbole(checkNode));
+		unit.setDefinition(parseDefinition(checkNode));
 		return unit;
 	}
 

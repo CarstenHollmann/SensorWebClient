@@ -30,15 +30,14 @@ package org.n52.shared.serializable.pojos.sensorthings;
 import java.io.Serializable;
 
 import org.n52.oxf.ows.capabilities.ITime;
+import org.n52.shared.serializable.pojos.sos.Offering;
 
 import com.vividsolutions.jts.geom.Geometry;
 
-public class SensorThingsDatastream implements SensorThingsObject, Serializable {
+public class SensorThingsDatastream extends Offering implements SensorThingsObject, Serializable {
 	
 	private static final long serialVersionUID = 8084273903550304988L;
 
-	private long id;
-	
 	private String selfLink;
 
 	private String thingNavigationLink;
@@ -66,18 +65,17 @@ public class SensorThingsDatastream implements SensorThingsObject, Serializable 
 		super();
 	}
 	
-	public SensorThingsDatastream(String parameterId) {
-		this.id = Long.parseLong(parameterId);
+	public SensorThingsDatastream(String parameterId, String serviceUrl) {
+		super(parameterId, serviceUrl);
 	}
 	
-	public SensorThingsDatastream(long parameterId) {
-		this.id = parameterId;
+	public SensorThingsDatastream(long parameterId, String serviceUrl) {
+		super(Long.toString(parameterId), serviceUrl);
 	}
 
 	@Override
 	public long getId() {
-//		return Long.parseLong(getParameterId());
-		return id;
+		return Long.parseLong(getParameterId());
 	}
 
 	@Override
