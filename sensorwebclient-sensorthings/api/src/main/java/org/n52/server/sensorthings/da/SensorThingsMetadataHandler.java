@@ -42,7 +42,6 @@ import org.n52.oxf.adapter.IServiceAdapter;
 import org.n52.oxf.adapter.OperationResult;
 import org.n52.oxf.adapter.ParameterContainer;
 import org.n52.oxf.ows.ExceptionReport;
-import org.n52.oxf.ows.capabilities.Operation;
 import org.n52.server.da.MetadataHandler;
 import org.n52.server.da.oxf.OperationAccessor;
 import org.n52.server.mgmt.ConfigurationContext;
@@ -62,8 +61,6 @@ import org.n52.shared.serializable.pojos.sensorthings.SensorThingsObservedProper
 import org.n52.shared.serializable.pojos.sensorthings.SensorThingsSensor;
 import org.n52.shared.serializable.pojos.sensorthings.SensorThingsThings;
 import org.n52.shared.serializable.pojos.sos.Category;
-import org.n52.shared.serializable.pojos.sos.Feature;
-import org.n52.shared.serializable.pojos.sos.Offering;
 import org.n52.shared.serializable.pojos.sos.Phenomenon;
 import org.n52.shared.serializable.pojos.sos.Procedure;
 import org.n52.shared.serializable.pojos.sos.SosService;
@@ -136,95 +133,92 @@ public class SensorThingsMetadataHandler extends MetadataHandler implements Sens
 	
 	protected Collection<SosTimeseries> createObservingTimeseries(String sosUrl) throws OXFException {
 		IServiceAdapter adapter = createAdapter(metadata);
-//		List<Station> createStations = getStations(adapter);
-		
+		// List<Station> createStations = getStations(adapter);
+
 		Map<Long, SensorThingsThings> thingsMap = new HashMap<Long, SensorThingsThings>();
 		Map<Long, SensorThingsSensor> sensorsMap = new HashMap<Long, SensorThingsSensor>();
 		Map<Long, SensorThingsObservedProperty> obsPropsMap = new HashMap<Long, SensorThingsObservedProperty>();
 		Map<Long, SensorThingsFeatureOfInterest> featuresMap = new HashMap<Long, SensorThingsFeatureOfInterest>();
-		
+
 		Map<Long, Long> datastreamThing = new HashMap<Long, Long>();
 		Map<Long, Long> datastreamSensor = new HashMap<Long, Long>();
 		Map<Long, Long> datastreamObsProp = new HashMap<Long, Long>();
 		Map<Long, Set<Long>> datastreamFeatures = new HashMap<Long, Set<Long>>();
-		
+
 		List<SensorThingsDatastream> datastreams = getDatastreams(adapter);
 		for (SensorThingsDatastream datastream : datastreams) {
 			updateBBox(datastream.getObservedArea());
 			addThingsToMap(datastream.getId(), getThingForDatastream(adapter, datastream), thingsMap, datastreamThing);
-			addSensorsToMap(datastream.getId(),  getSensorForDatastream(adapter, datastream), sensorsMap, datastreamSensor);
-			addObservedPropertesToMap(datastream.getId(), getObservedPropertyForDatastream(adapter, datastream), obsPropsMap, datastreamObsProp);
-			addFeaturesToMap(datastream.getId(), getFeaturesForDatastream(adapter, datastream), featuresMap, datastreamFeatures);
+			addSensorsToMap(datastream.getId(), getSensorForDatastream(adapter, datastream), sensorsMap,
+					datastreamSensor);
+			addObservedPropertesToMap(datastream.getId(), getObservedPropertyForDatastream(adapter, datastream),
+					obsPropsMap, datastreamObsProp);
+			addFeaturesToMap(datastream.getId(), getFeaturesForDatastream(adapter, datastream), featuresMap,
+					datastreamFeatures);
 		}
 		List<Station> stations = getStations(featuresMap.values(), adapter);
-		
-		TimeseriesParametersLookup lookup = ((SensorThingsMetadata)getMetadata()).getTimeseriesParametersLookup();
+
+		TimeseriesParametersLookup lookup = ((SensorThingsMetadata) getMetadata()).getTimeseriesParametersLookup();
 		for (SensorThingsSensor sensor : sensorsMap.values()) {
 			lookup.addProcedure(sensor);
 		}
 		for (SensorThingsObservedProperty obsProp : obsPropsMap.values()) {
-			 lookup.addPhenomenon(obsProp);
-			 lookup.addOffering(new Offering(obsProp.getPhenomenonId(), sosUrl));
+			lookup.addPhenomenon(obsProp);
 		}
 		Collection<SosTimeseries> allObservedTimeseries = new ArrayList<SosTimeseries>();
 		for (SensorThingsDatastream datastream : datastreams) {
-			datastream.getId();
-			SosTimeseries timeseries = new SosTimeseries();
 			Phenomenon phenomenon = getPhenomenon(datastream.getId(), datastreamObsProp, obsPropsMap);
-            timeseries.setPhenomenon(phenomenon);
-            timeseries.setProcedure(getProcedure(datastream.getId(), datastreamSensor, sensorsMap));
-            timeseries.setOffering(new Offering(phenomenon.getPhenomenonId(), sosUrl));
-            timeseries.setCategory(getCategory(datastream.getId(), datastreamThing, thingsMap));
-            timeseries.setSosService(new SosService(getMetadata().getServiceUrl(), getMetadata().getVersion()));
-            timeseries.getSosService().setLabel(getMetadata().getTitle());
-            allObservedTimeseries.add(timeseries);
-            for (Long featureId : datastreamFeatures.get(datastream.getId())) {
-            	SensorThingsFeatureOfInterest feature = featuresMap.get(featureId);
-            	if (!lookup.containsFeature(Long.toString(featureId))) {
-                    lookup.addFeature(feature);
-                }
-            	timeseries.setFeature(feature);
-            	Station station = getSensorThingsMetadata().getStationByFeature(feature);
-            	if (station == null) {
-            		station = new Station(feature);
-                    station.setLocation(feature.getPointLocation());
-                    getSensorThingsMetadata().addStation(station);
-            	}
-                station.addTimeseries(timeseries);
+			lookup.addOffering(datastream);
+			for (Long featureId : datastreamFeatures.get(datastream.getId())) {
+				SosTimeseries timeseries = new SosTimeseries();
+				timeseries.setPhenomenon(phenomenon);
+				timeseries.setProcedure(getProcedure(datastream.getId(), datastreamSensor, sensorsMap));
+				timeseries.setOffering(datastream);
+				timeseries.setCategory(getCategory(datastream.getId(), datastreamThing, thingsMap));
+				timeseries.setSosService(new SosService(getMetadata().getServiceUrl(), getMetadata().getVersion()));
+				timeseries.getSosService().setLabel(getMetadata().getTitle());
+				SensorThingsFeatureOfInterest feature = featuresMap.get(featureId);
+				if (!lookup.containsFeature(Long.toString(featureId))) {
+					lookup.addFeature(feature);
+				}
+				timeseries.setFeature(feature);
+				Station station = getSensorThingsMetadata().getStationByFeature(feature);
+				if (station == null) {
+					station = new Station(feature);
+					station.setLocation(feature.getPointLocation());
+					getSensorThingsMetadata().addStation(station);
+				}
+				station.addTimeseries(timeseries);
+				allObservedTimeseries.add(timeseries);
 			}
 		}
-        return allObservedTimeseries;
-    }
+		return allObservedTimeseries;
+	}
 	
 	private SensorThingsMetadata getSensorThingsMetadata() {
 		return (SensorThingsMetadata)metadata;
 	}
 
-	private Category getCategory(long id, Map<Long, Long> datastreamThing,
-			Map<Long, SensorThingsThings> thingsMap) {
+	private Category getCategory(long id, Map<Long, Long> datastreamThing, Map<Long, SensorThingsThings> thingsMap) {
 		return thingsMap.get(datastreamThing.get(id));
 	}
 
-	private Procedure getProcedure(long id, Map<Long, Long> datastreamSensor,
-			Map<Long, SensorThingsSensor> sensorsMap) {
+	private Procedure getProcedure(long id, Map<Long, Long> datastreamSensor, Map<Long, SensorThingsSensor> sensorsMap) {
 		return sensorsMap.get(datastreamSensor.get(id));
 	}
 
-	private Phenomenon getPhenomenon(long id, Map<Long, Long> datastreamObsProp,
-			Map<Long, SensorThingsObservedProperty> obsPropsMap) {
+	private Phenomenon getPhenomenon(long id, Map<Long, Long> datastreamObsProp, Map<Long, SensorThingsObservedProperty> obsPropsMap) {
 		return obsPropsMap.get(datastreamObsProp.get(id));
 	}
 
-	private void addThingsToMap(long id, List<SensorThingsThings> things,
-			Map<Long, SensorThingsThings> thingsMap, Map<Long, Long> datastreamThing) {
+	private void addThingsToMap(long id, List<SensorThingsThings> things, Map<Long, SensorThingsThings> thingsMap, Map<Long, Long> datastreamThing) {
 		for (SensorThingsThings thing : things) {
 			thingsMap.put(thing.getId(), thing);
 			datastreamThing.put(id, thing.getId());
 		}
 	}
 	
-	private void addSensorsToMap(long id, List<SensorThingsSensor> sensors,
-			Map<Long, SensorThingsSensor> sensorsMap, Map<Long, Long> datastreamSensor) {
+	private void addSensorsToMap(long id, List<SensorThingsSensor> sensors, Map<Long, SensorThingsSensor> sensorsMap, Map<Long, Long> datastreamSensor) {
 		for (SensorThingsSensor sensor : sensors) {
 			sensorsMap.put(sensor.getId(), sensor);
 			datastreamSensor.put(id, sensor.getId());
@@ -261,7 +255,7 @@ public class SensorThingsMetadataHandler extends MetadataHandler implements Sens
 		container.addParameterShell(URI_PATH, OBSERVATIONS);
 		container.addParameterShell(SELECT, OBSERVATIONS + "/" + FEATURE_OF_INTEREST);
 		container.addParameterShell(EXPAND, FEATURE_OF_INTEREST);
-		OperationAccessor oa = new OperationAccessor(adapter, getDatastreamsOperation(), container);
+		OperationAccessor oa = new OperationAccessor(adapter, getSensorThingsMetadata().getDatastreamsOperation(), container);
 		OperationResult result = oa.call();
 		SensorThingsFeatureOfInterestDecoder decoder = new SensorThingsFeatureOfInterestDecoder(adapter, metadata);
 		try {
@@ -279,7 +273,7 @@ public class SensorThingsMetadataHandler extends MetadataHandler implements Sens
 		container.addParameterShell(ID, Long.toString(datastream.getId()));
 		container.addParameterShell(SELECT, OBSERVED_PROPERTY);
 		container.addParameterShell(EXPAND, OBSERVED_PROPERTY);
-		OperationAccessor oa = new OperationAccessor(adapter, getDatastreamsOperation(), container);
+		OperationAccessor oa = new OperationAccessor(adapter, getSensorThingsMetadata().getDatastreamsOperation(), container);
 		OperationResult result = oa.call();
 		SensorThingsObservedPropertyDecoder decoder = new SensorThingsObservedPropertyDecoder(adapter, metadata.getServiceUrl());
 		try {
@@ -297,7 +291,7 @@ public class SensorThingsMetadataHandler extends MetadataHandler implements Sens
 		container.addParameterShell(ID, Long.toString(datastream.getId()));
 		container.addParameterShell(SELECT, SENSOR);
 		container.addParameterShell(EXPAND, SENSOR);
-		OperationAccessor oa = new OperationAccessor(adapter, getDatastreamsOperation(), container);
+		OperationAccessor oa = new OperationAccessor(adapter, getSensorThingsMetadata().getDatastreamsOperation(), container);
 		OperationResult result = oa.call();
 		SensorThingsSensorDecoder decoder = new SensorThingsSensorDecoder(adapter, metadata.getServiceUrl());
 		try {
@@ -315,7 +309,7 @@ public class SensorThingsMetadataHandler extends MetadataHandler implements Sens
 		container.addParameterShell(ID, Long.toString(datastream.getId()));
 		container.addParameterShell(SELECT, THING);
 		container.addParameterShell(EXPAND, THING);
-		OperationAccessor oa = new OperationAccessor(adapter, getDatastreamsOperation(), container);
+		OperationAccessor oa = new OperationAccessor(adapter, getSensorThingsMetadata().getDatastreamsOperation(), container);
 		OperationResult result = oa.call();
 		SensorThingsThingsDecoder decoder = new SensorThingsThingsDecoder(adapter, metadata.getServiceUrl());
 		try {
@@ -329,9 +323,9 @@ public class SensorThingsMetadataHandler extends MetadataHandler implements Sens
 	}
 
 	private List<SensorThingsDatastream> getDatastreams(IServiceAdapter adapter) throws OXFException {
-		OperationAccessor oa = new OperationAccessor(adapter, getDatastreamsOperation(), new ParameterContainer());
+		OperationAccessor oa = new OperationAccessor(adapter, getSensorThingsMetadata().getDatastreamsOperation(), new ParameterContainer());
 		OperationResult result = oa.call();
-		SensorThingsDatastreamDecoder decoder = new SensorThingsDatastreamDecoder(adapter);
+		SensorThingsDatastreamDecoder decoder = new SensorThingsDatastreamDecoder(adapter, metadata.getServiceUrl());
 		try {
 			return decoder.decode(result);
 		} catch (IOException e) {
@@ -348,7 +342,7 @@ public class SensorThingsMetadataHandler extends MetadataHandler implements Sens
 		if (collection != null && !collection.isEmpty()) {
 			return decoder.createStations(collection); 
 		}
-		OperationAccessor oa = new OperationAccessor(adapter, getFeaturesOfInterestOperation(), new ParameterContainer());
+		OperationAccessor oa = new OperationAccessor(adapter, getSensorThingsMetadata().getFeaturesOfInterestOperation(), new ParameterContainer());
 		OperationResult result = oa.call();
 		try{
 			return decoder.createStations(result);
@@ -363,37 +357,4 @@ public class SensorThingsMetadataHandler extends MetadataHandler implements Sens
 		// TODO Auto-generated method stub
 		
 	}
-
-	public Operation getThingsOperation() {
-		return new Operation(THINGS, metadata.getServiceUrl(), metadata.getServiceUrl());
-	}
-	
-	public Operation getLocatiopnsOperation() {
-		return new Operation(LOCATIONS, metadata.getServiceUrl(), metadata.getServiceUrl());
-	}
-	
-	public Operation getDatastreamsOperation() {
-		return new Operation(DATASTREAMS, metadata.getServiceUrl(), metadata.getServiceUrl());
-	}
-	
-	public Operation getHistoricalLocationsOperation() {
-		return new Operation(HISTORICAL_LOCATIONS, metadata.getServiceUrl(), metadata.getServiceUrl());
-	}
-	
-	public Operation getSensorsOperation() {
-		return new Operation(SENSORS, metadata.getServiceUrl(), metadata.getServiceUrl());
-	}
-	
-	public Operation getObservationsOperation() {
-		return new Operation(OBSERVATIONS, metadata.getServiceUrl(), metadata.getServiceUrl());
-	}
-	
-	public Operation getObservedPropertiesOperation() {
-		return new Operation(OBSERVED_PROPERTIES, metadata.getServiceUrl(), metadata.getServiceUrl());
-	}
-	
-	public Operation getFeaturesOfInterestOperation() {
-		return new Operation(FEATURES_OF_INTEREST, metadata.getServiceUrl(), metadata.getServiceUrl());
-	}
-	
 }
