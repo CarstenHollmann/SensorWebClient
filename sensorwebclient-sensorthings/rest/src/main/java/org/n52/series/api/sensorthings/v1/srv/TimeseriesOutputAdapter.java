@@ -50,7 +50,7 @@ import org.n52.shared.serializable.pojos.sensorthings.SensorThingsMetadata;
 import org.n52.shared.serializable.pojos.sos.SosTimeseries;
 import org.n52.shared.serializable.pojos.sos.Station;
 
-public class TimeseriesOutputAdapter extends AbstractOutputAdapter implements TimeseriesDataService, ParameterService<TimeseriesMetadataOutput>, RawDataService {
+public class TimeseriesOutputAdapter extends AbstractOutputAdapter implements TimeseriesDataService, ParameterService<TimeseriesMetadataOutput> {
 
     private GetDataService dataService;
 
@@ -166,27 +166,6 @@ public class TimeseriesOutputAdapter extends AbstractOutputAdapter implements Ti
 
 	public void setStatusIntervalsService(StatusIntervalsConfigApplier statusIntervalsService) {
 		this.statusIntervalsService = statusIntervalsService;
-	}
-
-	@Override
-	public InputStream getRawData(String id, IoParameters query) {
-		if (dataService instanceof RawDataService) {
-			return ((RawDataService)dataService).getRawData(id, query);
-		}
-		return null;
-	}
-
-	@Override
-	public InputStream getRawData(UndesignedParameterSet parameters) {
-		if (dataService instanceof RawDataService) {
-			return ((RawDataService)dataService).getRawData(parameters);
-		}
-		return null;
-	}
-
-	@Override
-	public boolean supportsRawData() {
-		return dataService instanceof RawDataService && ((RawDataService)dataService).supportsRawData();
 	}
 
 }

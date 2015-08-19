@@ -31,6 +31,8 @@ public interface SensorThingsConstants {
 	
 	String URI_PATH = "uriPath";
 	
+	String PARAMETER = "parameter";
+	
 	String SERVICE = "Service";
 
 	String VALUE = "value";

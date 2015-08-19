@@ -32,15 +32,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.n52.oxf.ows.capabilities.Operation;
 import org.n52.shared.Metadata;
 import org.n52.shared.MetadataBuilder;
 import org.n52.shared.requests.query.QueryParameters;
+import org.n52.shared.sensorthings.decoder.SensorThingsConstants;
 import org.n52.shared.serializable.pojos.sos.Feature;
 import org.n52.shared.serializable.pojos.sos.SosTimeseries;
 import org.n52.shared.serializable.pojos.sos.Station;
 import org.n52.shared.serializable.pojos.sos.TimeseriesParametersLookup;
 
-public class SensorThingsMetadata extends Metadata implements Serializable {
+public class SensorThingsMetadata extends Metadata implements SensorThingsConstants, Serializable {
 
 	private static final long serialVersionUID = 5445209463470572842L;
 	
@@ -141,6 +143,38 @@ public class SensorThingsMetadata extends Metadata implements Serializable {
             : timeseriesParametersLookup;
         return timeseriesParametersLookup;
     }
+    
+	public Operation getThingsOperation() {
+		return new Operation(THINGS, getServiceUrl(), getServiceUrl());
+	}
+	
+	public Operation getLocatiopnsOperation() {
+		return new Operation(LOCATIONS, getServiceUrl(), getServiceUrl());
+	}
+	
+	public Operation getDatastreamsOperation() {
+		return new Operation(DATASTREAMS, getServiceUrl(), getServiceUrl());
+	}
+	
+	public Operation getHistoricalLocationsOperation() {
+		return new Operation(HISTORICAL_LOCATIONS, getServiceUrl(), getServiceUrl());
+	}
+	
+	public Operation getSensorsOperation() {
+		return new Operation(SENSORS, getServiceUrl(), getServiceUrl());
+	}
+	
+	public Operation getObservationsOperation() {
+		return new Operation(OBSERVATIONS, getServiceUrl(), getServiceUrl());
+	}
+	
+	public Operation getObservedPropertiesOperation() {
+		return new Operation(OBSERVED_PROPERTIES, getServiceUrl(), getServiceUrl());
+	}
+	
+	public Operation getFeaturesOfInterestOperation() {
+		return new Operation(FEATURES_OF_INTEREST, getServiceUrl(), getServiceUrl());
+	}
     
     public SensorThingsMetadata clone() {
         SensorThingsMetadata clone = new SensorThingsMetadata(getServiceUrl(),

@@ -162,7 +162,7 @@ public class SensorThingsAdapter implements IServiceAdapter {
 		} catch (IOException e) {
 			 throw new OXFException(e);
 		}
-		SensorThingsServiceDescriptor stsd = new SensorThingsServiceDescriptor(null, null, null, om, null);
+		SensorThingsServiceDescriptor stsd = new SensorThingsServiceDescriptor("v1.0", null, null, om, null);
 		return stsd;
 	}
 
