@@ -216,10 +216,10 @@ public class GeoJSONDecoder {
 				double value = node.get(i).doubleValue();
 				 switch (i) {
 			      case 0:
-			    	  coordinate.x = value;
+			    	  coordinate.y = value;
 			        break;
 			      case 1:
-			    	  coordinate.y = value;
+			    	  coordinate.x = value;
 			        break;
 			      case 2:
 			    	  coordinate.z = value;
