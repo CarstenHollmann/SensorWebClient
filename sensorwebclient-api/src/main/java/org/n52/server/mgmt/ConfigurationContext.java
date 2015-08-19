@@ -390,7 +390,21 @@ public class ConfigurationContext implements ServletContextAware {
     }
 
     public static boolean containsServiceInstance(String instance) {
-        return getSOSMetadataForItemName(instance) != null;
+        return getMetadataForItemName(instance) != null;
+    }
+    
+    /**
+     * @param itemName
+     *        the configured item name of the SOS.
+     * @return the associated {@link SOSMetadata} or <code>null</code> if not found.
+     */
+    public static Metadata getMetadataForItemName(String itemName) {
+        for (Metadata metadata : getMetadatas()) {
+            if (metadata.getConfiguredItemName().equals(itemName)) {
+                return metadata;
+            }
+        }
+        return null;
     }
 
     /**
