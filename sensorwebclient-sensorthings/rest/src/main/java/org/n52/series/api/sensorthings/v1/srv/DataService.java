@@ -27,27 +27,29 @@
  */
 package org.n52.series.api.sensorthings.v1.srv;
 
-import static org.n52.server.mgmt.ConfigurationContext.getSOSMetadataForItemName;
-import static org.n52.server.mgmt.ConfigurationContext.getSOSMetadatas;
+import static org.n52.server.mgmt.ConfigurationContext.getMetadataForItemName;
+import static org.n52.server.mgmt.ConfigurationContext.getMetadatas;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.joda.time.Instant;
 
+import org.joda.time.Instant;
 import org.joda.time.Interval;
 import org.n52.client.service.SensorMetadataService;
 import org.n52.client.service.TimeSeriesDataService;
 import org.n52.io.format.TvpDataCollection;
 import org.n52.io.v1.data.TimeseriesData;
 import org.n52.io.v1.data.UndesignedParameterSet;
+import org.n52.shared.Metadata;
 import org.n52.shared.serializable.pojos.DesignOptions;
 import org.n52.shared.serializable.pojos.ReferenceValue;
 import org.n52.shared.serializable.pojos.TimeseriesProperties;
+import org.n52.shared.serializable.pojos.sensorthings.SensorThingsMetadata;
 import org.n52.shared.serializable.pojos.sos.Procedure;
-import org.n52.shared.serializable.pojos.sos.SOSMetadata;
+//import org.n52.shared.serializable.pojos.sos.SOSMetadata;
 import org.n52.shared.serializable.pojos.sos.SosTimeseries;
 import org.n52.shared.serializable.pojos.sos.Station;
 import org.n52.shared.serializable.pojos.sos.TimeseriesParametersLookup;
@@ -68,10 +70,10 @@ public abstract class DataService {
      * @return the SOS metadata associated to the given timeseries or <code>null</code> if timeseries id is
      *         unknown.
      */
-    protected SOSMetadata getMetadataForTimeseriesId(String timeseriesId) {
-        for (SOSMetadata metadata : getSOSMetadatas()) {
-            if (metadata.containsStationWithTimeseriesId(timeseriesId)) {
-                return metadata;
+    protected SensorThingsMetadata getMetadataForTimeseriesId(String timeseriesId) {
+        for (Metadata metadata : getMetadatas()) {
+        	if (metadata instanceof SensorThingsMetadata && ((SensorThingsMetadata)metadata).containsStationWithTimeseriesId(timeseriesId) ) {
+                return (SensorThingsMetadata)metadata;
             }
         }
         return null;
@@ -84,13 +86,13 @@ public abstract class DataService {
      * @throws ResourceNotFoundException
      *         if SOS instance could not be found.
      */
-    protected SOSMetadata getMetadataForInstanceName(String instance) {
-        SOSMetadata metadata = getSOSMetadataForItemName(instance);
-        if (metadata == null) {
-            LOGGER.warn("Could not find configured SOS instance for itemName '{}'" + instance);
-            throw new ResourceNotFoundException("No SOS instance for name '" + instance + "'.");
+    protected SensorThingsMetadata getMetadataForInstanceName(String instance) {
+        Metadata metadata = getMetadataForItemName(instance);
+        if (metadata == null || !(metadata instanceof SensorThingsMetadata)) {
+            LOGGER.warn("Could not find configured instance for itemName '{}'" + instance);
+            throw new ResourceNotFoundException("No instance for name '" + instance + "'.");
         }
-        return metadata;
+        return (SensorThingsMetadata)metadata;
     }
 
     /**
@@ -137,7 +139,7 @@ public abstract class DataService {
     }
     
     protected TimeseriesProperties createExpandedTimeseriesProperties(String timeseriesId) {
-        SOSMetadata metadata = getMetadataForTimeseriesId(timeseriesId);
+    	SensorThingsMetadata metadata = getMetadataForTimeseriesId(timeseriesId);
         TimeseriesParametersLookup lookup = metadata.getTimeseriesParametersLookup();
         Station station = metadata.getStationByTimeSeriesId(timeseriesId);
         SosTimeseries timeseries = station.getTimeseriesById(timeseriesId);
@@ -148,7 +150,7 @@ public abstract class DataService {
     }
 
     protected HashMap<String,ReferenceValue> getReferenceValuesFor(String timeseriesId) {
-        SOSMetadata metadata = getMetadataForTimeseriesId(timeseriesId);
+    	SensorThingsMetadata metadata = getMetadataForTimeseriesId(timeseriesId);
         Station station = metadata.getStationByTimeSeriesId(timeseriesId);
         SosTimeseries timeseries = station.getTimeseriesById(timeseriesId);
         
@@ -167,7 +169,7 @@ public abstract class DataService {
     }
 
     protected TimeseriesProperties createCondensedTimeseriesProperties(String timeseriesId) {
-        SOSMetadata metadata = getMetadataForTimeseriesId(timeseriesId);
+    	SensorThingsMetadata metadata = getMetadataForTimeseriesId(timeseriesId);
         Station station = metadata.getStationByTimeSeriesId(timeseriesId);
         SosTimeseries timeseries = station.getTimeseriesById(timeseriesId);
         TimeseriesParametersLookup lookup = metadata.getTimeseriesParametersLookup();

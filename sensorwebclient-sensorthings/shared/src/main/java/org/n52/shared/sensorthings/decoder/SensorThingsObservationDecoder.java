@@ -28,34 +28,173 @@
 package org.n52.shared.sensorthings.decoder;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
+import org.joda.time.DateTime;
 import org.n52.oxf.OXFException;
 import org.n52.oxf.adapter.IServiceAdapter;
 import org.n52.oxf.adapter.OperationResult;
+import org.n52.oxf.adapter.ParameterContainer;
 import org.n52.oxf.ows.ExceptionReport;
+import org.n52.oxf.ows.capabilities.ITime;
+import org.n52.oxf.ows.capabilities.Operation;
+import org.n52.oxf.valueDomains.time.TimePeriod;
+import org.n52.oxf.valueDomains.time.TimePosition;
+import org.n52.shared.serializable.pojos.DesignOptions;
+import org.n52.shared.serializable.pojos.sensorthings.SensorThingsObservation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 
-public class SensorThingsObservationDecoder extends AbstractSensorThingsDecoder<Object> {
+public class SensorThingsObservationDecoder extends AbstractSensorThingsDecoder<List<SensorThingsObservation>> {
 
 	public SensorThingsObservationDecoder(IServiceAdapter adapter) {
 		super(adapter);
 	}
 
 	@Override
-	public Object decode(OperationResult result) throws IOException,
+	public List<SensorThingsObservation> decode(OperationResult result) throws IOException,
 			ExceptionReport, OXFException {
-		// TODO Auto-generated method stub
+		if (result != null) {
+			return decode(JSONUtils.loadStream(result.getIncomingResultAsAutoCloseStream()));
+		}
 		return null;
 	}
 
-	@Override
-	public Object decode(JsonNode node) throws IOException, ExceptionReport,
-			OXFException {
-		// TODO Auto-generated method stub
+	public List<SensorThingsObservation> decode(OperationResult result, DesignOptions options) throws IOException,
+	ExceptionReport, OXFException {
+		if (result != null) {
+			return decode(JSONUtils.loadStream(result.getIncomingResultAsAutoCloseStream()), options);
+		}
 		return null;
 	}
 	
+	public List<SensorThingsObservation> decode(JsonNode node, DesignOptions options) throws IOException, ExceptionReport,
+			OXFException {
+		List<SensorThingsObservation> observations = new ArrayList<SensorThingsObservation>();
+		List<JsonNode> nodes = parseValue(node);
+		boolean stopLoading = false;
+		if (nodes != null) {
+			Set<Long> ids = new HashSet<Long>();
+			for (JsonNode jsonNode : nodes) {
+				jsonNode = checkForObject(jsonNode, OBSERVATION);
+				long id = parseId(jsonNode);
+				if (id != -1 && !ids.contains(id)) {
+					SensorThingsObservation observation = parseObservation(jsonNode);
+					if (observation != null) {
+						// TODO remove this check if time filtering works for SensorThings API
+						if (checkForTemporalFilter(observation, options)) {
+							observations.add(observation);
+							ids.add(id);
+						} else {
+							if (!observations.isEmpty()) {
+								stopLoading = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+		// TODO  remove "&& !stopLoading" if time filtering works for SensorThings API
+		if (!checkForTimeParam(options) && hasNextLink(node) && !stopLoading) {
+			observations.addAll(getNext(parseNextLink(node), options));
+		}
+		return observations;
+	}
 
+	/*
+	 * TODO remove this if time filtering works for SensorThings API
+	 */
+	private boolean checkForTemporalFilter(SensorThingsObservation observation, DesignOptions options) {
+		if (options != null && options.getTimeParam() == null) {
+			ITime phenomenonTime = observation.getPhenomenonTime();
+			TimePosition begin = new TimePosition(new DateTime(options.getBegin()).toString());
+			TimePosition end =  new TimePosition(new DateTime(options.getEnd()).toString());
+			TimePeriod filter = new TimePeriod(begin, end);
+			if (phenomenonTime instanceof TimePeriod) {
+				return filter.contains((TimePeriod)phenomenonTime);
+			} else if (phenomenonTime instanceof TimePosition) {
+				return filter.contains((TimePosition)phenomenonTime);
+			}
+		}
+		return true;
+	}
+
+	private boolean checkForTimeParam(DesignOptions options) {
+		if (options != null) {
+			return options.getTimeParam() != null;
+		}
+		return false;
+	}
+
+	@Override
+	public List<SensorThingsObservation> decode(JsonNode node) throws IOException, ExceptionReport,
+			OXFException {
+//		List<SensorThingsObservation> observations = new ArrayList<SensorThingsObservation>();
+//		List<JsonNode> nodes = parseValue(node);
+//		if (nodes != null) {
+//			Set<Long> ids = new HashSet<Long>();
+//			for (JsonNode jsonNode : nodes) {
+//				jsonNode = checkForObject(jsonNode, OBSERVATION);
+//				long id = parseId(jsonNode);
+//				if (id != -1 && !ids.contains(id)) {
+//					SensorThingsObservation observation = parseObservation(jsonNode);
+//					if (observation != null) {
+//						observations.add(observation);
+//					}
+//					ids.add(id);
+//				}
+//			}
+//		}
+//		if (hasNextLink(node)) {
+//			observations.addAll(getNext(parseNextLink(node)));
+//		}
+		return decode(node, null);
+	}
+
+	private SensorThingsObservation parseObservation(JsonNode node) {
+		SensorThingsObservation observation = new SensorThingsObservation(parseId(node));
+		observation.setSelfLink(parseSelfLink(node));
+		observation.setDatastreamNavigationLink(parseNavigationLink(node, DATASTREAM));
+		observation.setFeatureOfInterestNavigationLink(parseNavigationLink(node, FEATURE_OF_INTEREST));
+		observation.setPhenomenonTime(parsePhenomenonTime(node));
+		observation.setResultTime(parseResultTime(node));
+		observation.setResult(parseResult(node));
+		return observation;
+	}
+
+	private Object parseResult(JsonNode node) {
+		JsonNode path = node.path(RESULT);
+		if (checkNode(path)) {
+			if (path.isDouble()) {
+				return path.doubleValue();
+			} else if (path.isBigDecimal()) {
+				return path.asDouble();
+			} else if (path.isFloat()) {
+				return path.asDouble();
+			} else if (path.isBoolean()) {
+				return path.asDouble();
+			}  else if (path.isInt()) {
+				return path.asDouble();
+			}  else if (path.isLong()) {
+				return path.asDouble();
+			} else if (path.isTextual()) {
+				return path.asDouble();
+			}
+		}
+		return Double.NaN;
+	}
+
+	private List<SensorThingsObservation> getNext(String link, DesignOptions options) throws IOException, ExceptionReport, OXFException {
+		return decode(getAdapter().doOperation(getOperation(link), new ParameterContainer()), options);
+	}
+
+	private Operation getOperation(String url) {
+		return new Operation(DATASTREAMS, url, url);
+	}
 }
