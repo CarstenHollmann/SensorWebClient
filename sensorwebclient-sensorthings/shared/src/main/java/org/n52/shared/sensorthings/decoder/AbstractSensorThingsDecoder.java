@@ -39,6 +39,7 @@ import org.n52.oxf.adapter.IServiceAdapter;
 import org.n52.oxf.adapter.OperationResult;
 import org.n52.oxf.ows.ExceptionReport;
 import org.n52.oxf.ows.capabilities.ITime;
+import org.n52.oxf.valueDomains.time.TimeFactory;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.operation.TransformException;
 import org.slf4j.Logger;
@@ -131,7 +132,7 @@ public abstract class AbstractSensorThingsDecoder<T> implements SensorThingsCons
 		return -1;
 	}
 
-	private boolean checkNode(JsonNode node) {
+	protected boolean checkNode(JsonNode node) {
 		return node != null  && !node.isMissingNode();
 	}
 
@@ -216,11 +217,11 @@ public abstract class AbstractSensorThingsDecoder<T> implements SensorThingsCons
     }
 	
 	protected String parseNextLink(JsonNode node) {
-		JsonNode atIotLinkPath = node.path(getNavigationLinkPath(AT_IOT_NEXT_LINK));
+		JsonNode atIotLinkPath = node.path(AT_IOT_NEXT_LINK);
 		if (checkNode(atIotLinkPath)) {
 			return atIotLinkPath.asText();
 		} else {
-			JsonNode linkPath = node.path(getNavigationLinkPath(NEXT_LINK));
+			JsonNode linkPath = node.path(NEXT_LINK);
 			if (checkNode(linkPath)) {
 				return linkPath.asText();
 			}
@@ -229,9 +230,9 @@ public abstract class AbstractSensorThingsDecoder<T> implements SensorThingsCons
 	}
 	
 	protected boolean hasNextLink(JsonNode node) {
-		JsonNode atIotLinkPath = node.path(getNavigationLinkPath(AT_IOT_NEXT_LINK));
+		JsonNode atIotLinkPath = node.path(AT_IOT_NEXT_LINK);
 		if (!checkNode(atIotLinkPath)) {
-			JsonNode linkPath = node.path(getNavigationLinkPath(NEXT_LINK));
+			JsonNode linkPath = node.path(NEXT_LINK);
 			return checkNode(linkPath);
 		}
 		return true;
@@ -242,7 +243,7 @@ public abstract class AbstractSensorThingsDecoder<T> implements SensorThingsCons
 		if (checkNode(path)) {
 			return getNodes(path);
 		}
-		return null;
+		return getNodes(node);
 	}
 	
 	protected ITime parsePhenomenonTime(JsonNode node) {
@@ -262,12 +263,7 @@ public abstract class AbstractSensorThingsDecoder<T> implements SensorThingsCons
 	}
 
 	private ITime parseTime(String timeString) {
-		if (timeString.contains("/")) {
-//			new TimePeriod(period)
-		} else {
-			
-		}
-		return null;
+		return TimeFactory.createTime(timeString);
 	}
 	
 }
