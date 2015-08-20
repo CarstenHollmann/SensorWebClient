@@ -37,6 +37,7 @@ import org.n52.io.crs.CRSUtils;
 import org.n52.oxf.OXFException;
 import org.n52.oxf.adapter.IServiceAdapter;
 import org.n52.oxf.adapter.OperationResult;
+import org.n52.oxf.adapter.ParameterContainer;
 import org.n52.oxf.ows.ExceptionReport;
 import org.n52.oxf.ows.capabilities.ITime;
 import org.n52.oxf.valueDomains.time.TimeFactory;
@@ -264,6 +265,38 @@ public abstract class AbstractSensorThingsDecoder<T> implements SensorThingsCons
 
 	private ITime parseTime(String timeString) {
 		return TimeFactory.createTime(timeString);
+	}
+	
+	protected String getBaseUriFromLink(String link) {
+		if (checkNotNullOrEmptyString(link)) {
+			return link.substring(0, link.indexOf(QUESTIONMARK));
+		}
+		return link;
+	}
+
+	protected ParameterContainer getParameterContainerFromLink(String link) throws OXFException {
+		ParameterContainer container = new ParameterContainer();
+		if (checkNotNullOrEmptyString(link)) {
+			String[] uriParam = link.split("\\" + QUESTIONMARK);
+			if (uriParam != null && uriParam.length == 2) {
+				String parameterString = uriParam[1];
+				if (checkNotNullOrEmptyString(parameterString)) {
+					for (String parameter : parameterString.split(AND_SIGN)) {
+						if (checkNotNullOrEmptyString(parameter)) {
+							String[] split = parameter.split(EQUAL_SIGN);
+							if (split != null && split.length == 2) {
+								container.addParameterShell(split[0], split[1]);
+							}
+						}
+					}
+				}
+			}
+		}
+		return container;
+	}
+	
+	protected boolean checkNotNullOrEmptyString(String string) {
+		return string != null && !string.isEmpty();
 	}
 	
 }

@@ -36,13 +36,13 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
 import org.n52.client.service.TimeSeriesDataService;
 import org.n52.io.format.TvpDataCollection;
@@ -110,7 +110,7 @@ public class GetDataService extends DataService implements SensorThingsConstants
 		return performTimeseriesDataRequest(timeseriesCollection, createDesignOptions(parameterSet, tsProperties));
 	}
 	
-	//http://162.244.228.33:8080/OGCSensorThings/v1.0/Datastreams%286%29/Observations?$select=id,phenomenonTime,result
+	//http://162.244.228.33:8080/OGCSensorThings/v1.0/Datastreams%286%29/Observations?$select=id,phenomenonTime,result$filter=phenomenonTime ge '2015-08-19T14:00:00Z' and phenomenonTime le '2015-08-19T14:15:00Z'
 	private TvpDataCollection performTimeseriesDataRequest(TvpDataCollection timeSeriesResults, DesignOptions options) {
 		try {
 			TimeSeriesDataRequest tsRequest = new TimeSeriesDataRequest(options);
@@ -171,6 +171,9 @@ public class GetDataService extends DataService implements SensorThingsConstants
 		return null;
 	}
 
+	
+	// Not yet used: http://162.244.228.33:8080/OGCSensorThings/v1.0/Datastreams(7)/Observations?$resultFormat=dataArray
+	// Used: http://162.244.228.33:8080/OGCSensorThings/v1.0/Datastreams%286%29/Observations?$select=id,phenomenonTime,result$filter=phenomenonTime ge '2015-08-19T14:00:00Z' and phenomenonTime le '2015-08-19T14:15:00Z'
 	private List<SensorThingsObservation> getObservations(TimeseriesProperties properties, DesignOptions options) throws OXFException {
 		String timeseriesId = properties.getTimeseriesId();
 		SosTimeseries timeseries = properties.getTimeseries();
@@ -181,8 +184,11 @@ public class GetDataService extends DataService implements SensorThingsConstants
 		ParameterContainer container = new ParameterContainer();
 		container.addParameterShell(ID, datastreamId);
 		container.addParameterShell(URI_PATH, OBSERVATIONS);
-		// TODO add foi filter because a datastream can have multiple fois 
-		checkForFirstLatest(container, options);
+		addSelect(container);
+		// TODO add foi filter because a datastream can have multiple fois
+		if (!checkForFirstLatest(container, options)) {
+			checkForTemporalFilterAndFeature(container, options);
+		}
 		OperationAccessor oa = new OperationAccessor(adapter, metadata.getDatastreamsOperation(), container);
 		OperationResult result = oa.call();
 		SensorThingsObservationDecoder decoder = new SensorThingsObservationDecoder(adapter);
@@ -195,7 +201,53 @@ public class GetDataService extends DataService implements SensorThingsConstants
 		}
 	}
 
-	private void checkForFirstLatest(ParameterContainer container, DesignOptions options) throws OXFException {
+	private void addSelect(ParameterContainer container) throws OXFException {
+		StringBuilder builder = new StringBuilder();
+		builder.append(ID).append(COMMA);
+		builder.append(PHENOMENON_TIME).append(COMMA);
+		builder.append(RESULT);
+		container.addParameterShell(SELECT, builder.toString());
+	}
+
+	private void checkForTemporalFilterAndFeature(ParameterContainer container, DesignOptions options) throws OXFException {
+		if (options.getTimeParam() == null || (options.getTimeParam() != null && !options.getTimeParam().isEmpty())) {
+			String geTime = getGeTime(PHENOMENON_TIME, toUtcTime(options.getBegin()));
+			String leTime = getLeTime(PHENOMENON_TIME, toUtcTime(options.getEnd()));
+			
+			// TODO add feature
+			container.addParameterShell(FILTER, conjunction(geTime, leTime));
+		}
+	}
+	
+	private String conjunction(String... values) {
+		StringBuilder builder = new StringBuilder();
+		for (String string : values) {
+			builder.append(string).append(SPACE).append(AND).append(SPACE);
+		}
+		return builder.substring(0, builder.lastIndexOf(SPACE + AND + SPACE));
+	}
+	
+	private String toUtcTime(long time) {
+		return new DateTime(time, DateTimeZone.UTC).toString();
+	}
+	
+	private String getGeTime(String timeParam, String time) {
+		return getComparisonTime(timeParam, GE, time);
+	}
+	
+	private String getLeTime(String timeParam, String time) {
+		return getComparisonTime(timeParam, LE, time);
+	}
+	
+	private String getComparisonTime(String timeParam, String operator, String time) {
+		StringBuilder builder = new StringBuilder();
+		builder.append(timeParam).append(SPACE).append(operator).append(SPACE);
+		builder.append(INVERTED_COMMA).append(time).append(INVERTED_COMMA);
+		return builder.toString();
+	}
+	
+
+	private boolean checkForFirstLatest(ParameterContainer container, DesignOptions options) throws OXFException {
 		if (options.getTimeParam() != null && !options.getTimeParam().isEmpty()) {
 			String ascDesc = null;
 			if (PARAM_FIRST.equalsIgnoreCase(options.getTimeParam())) {
@@ -207,7 +259,9 @@ public class GetDataService extends DataService implements SensorThingsConstants
 				container.addParameterShell(ORDER_BY, PHENOMENON_TIME + " " + ascDesc);
 				container.addParameterShell(TOP, 1);
 			}
+			return true;
 		}
+		return false;
 	}
 
 	private TimeseriesDataMetadata createTimeseriesMetadata(GetDataInfos infos) {

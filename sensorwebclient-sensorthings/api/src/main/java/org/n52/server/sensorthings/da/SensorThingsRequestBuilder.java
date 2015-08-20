@@ -32,9 +32,12 @@ import static java.lang.String.format;
 import org.n52.oxf.OXFException;
 import org.n52.oxf.adapter.ParameterContainer;
 import org.n52.oxf.adapter.ParameterShell;
+import org.n52.oxf.ows.capabilities.IValueDomain;
 import org.n52.oxf.ows.capabilities.Operation;
 import org.n52.oxf.request.MultiValueRequestParameters;
 import org.n52.oxf.request.RequestParameters;
+import org.n52.oxf.valueDomains.IntegerDiscreteValueDomain;
+import org.n52.oxf.valueDomains.StringValueDomain;
 import org.n52.shared.sensorthings.decoder.SensorThingsConstants;
 
 public class SensorThingsRequestBuilder implements SensorThingsConstants {
@@ -111,7 +114,21 @@ public class SensorThingsRequestBuilder implements SensorThingsConstants {
 	private RequestParameters getRequestParameter(ParameterContainer parameters) {
 		MultiValueRequestParameters requestParameters = new MultiValueRequestParameters();
 		for (ParameterShell parameterShell : parameters.getParameterShells()) {
-			requestParameters.addParameterValue(parameterShell.getParameter().getCommonName(), parameterShell.getSpecifiedValue().toString());
+			IValueDomain valueDomain = parameterShell.getParameter().getValueDomain();
+			if (valueDomain instanceof IntegerDiscreteValueDomain) {
+				for (Integer i : parameterShell.getSpecifiedTypedValueArray(Integer[].class)) {
+					requestParameters.addParameterValue(parameterShell.getParameter().getCommonName(), i.toString());
+				}
+			} else if (valueDomain instanceof StringValueDomain) {
+				for (String s: parameterShell.getSpecifiedTypedValueArray(String[].class)) {
+					requestParameters.addParameterValue(parameterShell.getParameter().getCommonName(), s);
+				}
+			} else {
+				for (Object o : parameterShell.getSpecifiedTypedValueArray(Object[].class)) {
+					requestParameters.addParameterValue(parameterShell.getParameter().getCommonName(), o.toString());
+				}
+			}
+			
 		}
 		return requestParameters;
 	}

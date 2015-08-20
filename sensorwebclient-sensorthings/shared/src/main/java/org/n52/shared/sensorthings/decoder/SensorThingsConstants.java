@@ -152,4 +152,28 @@ public interface SensorThingsConstants {
 	String ENCODING_TYPE_PDF = "application/pdf";
 	
 	String ENCODING_TYPE_SENSORML_20 = "http://www.opengis.net/doc/IS/SensorML/2.0";
+	
+	// Comparison operators
+	
+	String GE = "ge";
+	
+	String LE = "le";
+	
+	String EQ = "eq";
+	
+	// Logical operators
+	
+	String AND = "and";
+	
+	String SPACE = " ";
+	
+	String INVERTED_COMMA = "'";
+	
+	String COMMA = ",";
+	
+	String QUESTIONMARK = "?";
+	
+	String AND_SIGN = "&";
+	
+	String EQUAL_SIGN = "=";
 }
