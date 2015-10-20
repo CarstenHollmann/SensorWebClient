@@ -383,9 +383,4 @@ public class ArcGISSoeEReportingMetadataHandler extends AbstractSosMetadataHandl
         return sensorDescriptions.containsKey(procedure);
     }
 
-	@Override
-	public Metadata updateMetadata(Metadata metadata) throws Exception {
-		throw new UnsupportedOperationException();
-	}
-
 }

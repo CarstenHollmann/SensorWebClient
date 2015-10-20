@@ -70,15 +70,6 @@ public abstract class MetadataHandler {
     public abstract Metadata performMetadataCompletion() throws Exception;
 
     /**
-     * TODO this method is currently under evaluation
-     *
-     * @param metadata
-     * @return
-     * @throws Exception
-     */
-    public abstract Metadata updateMetadata(Metadata metadata) throws Exception;
-
-    /**
      * Assembles timeseries' metadata and sets it to the passed {@link TimeseriesProperties} container.<br/>
      * <br/>
      * Abstracting the actual information source enables the implementor to either assemble metadata from

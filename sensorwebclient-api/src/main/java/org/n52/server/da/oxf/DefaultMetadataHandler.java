@@ -322,11 +322,6 @@ public class DefaultMetadataHandler extends AbstractSosMetadataHandler {
         }
         return result;
     }
-//
-//    @Override
-//    public SOSMetadata updateMetadata(final SOSMetadata metadata) throws Exception {
-//        // TODO Auto-generated method stub
-//        return metadata;
-//    }
+
 
 }
