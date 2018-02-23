@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2012-2016 52°North Initiative for Geospatial Open Source
+ * Copyright (C) 2012-2018 52°North Initiative for Geospatial Open Source
  * Software GmbH
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -140,9 +140,8 @@ public class SOSRequestBuilder_200_OXFExtension extends SOSRequestBuilder_200 {
         spatialFilter.set(equalsDoc);
     }
 
-
-
     private boolean isFirstOrLast(String param) {
         return param.equals(GET_OBSERVATION_TIME_PARAM_FIRST) || param.equals(GET_OBSERVATION_TIME_PARAM_LAST);
     }
+    
 }
