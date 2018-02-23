@@ -83,11 +83,8 @@ public class PhenomenonFilteredHydroMetadataHandler extends HydroMetadataHandler
     }
 
     protected void collectTimeseries(SOSMetadata metadata) throws OXFException,
-            InterruptedException,
-            ExecutionException,
-            TimeoutException,
-            XmlException,
-            IOException {
+                XmlException,
+                IOException {
 
         Collection<SosTimeseries> observingTimeseries = createObservingTimeseries(metadata);
 
@@ -191,9 +188,7 @@ public class PhenomenonFilteredHydroMetadataHandler extends HydroMetadataHandler
     }
 
     private Collection<SosTimeseries> executeGDATasks(Map<String, FutureTask<OperationResult>> getDataAvailabilityTasks,
-                                                      SOSMetadata metadata, Collection<SosTimeseries> observingTimeseries) throws InterruptedException,
-            ExecutionException,
-            TimeoutException,
+                                                      SOSMetadata metadata, Collection<SosTimeseries> observingTimeseries) throws
             XmlException,
             IOException {
         int counter = getDataAvailabilityTasks.size();
@@ -206,7 +201,7 @@ public class PhenomenonFilteredHydroMetadataHandler extends HydroMetadataHandler
             AccessorThreadPool.execute(futureTask);
             OperationResult result = null;
 			try {
-				result = futureTask.get(SERVER_TIMEOUT, MILLISECONDS);
+				result = waitForResult(futureTask, metadata.getTimeout());
 			} catch (Exception e) {
 				LOGGER.error("Get no result for GetDataAvailability with parameter constellation: " + phenomenon + "!");
 			}
@@ -220,8 +215,7 @@ public class PhenomenonFilteredHydroMetadataHandler extends HydroMetadataHandler
         return timeseries;
     }
 
-    private void executeFoiTasks(Map<String, FutureTask<OperationResult>> getFoiAccessTasks, SOSMetadata metadata) throws InterruptedException,
-            ExecutionException,
+    private void executeFoiTasks(Map<String, FutureTask<OperationResult>> getFoiAccessTasks, SOSMetadata metadata) throws
             XmlException,
             IOException,
             OXFException {
@@ -232,13 +226,17 @@ public class PhenomenonFilteredHydroMetadataHandler extends HydroMetadataHandler
             LOGGER.debug("Sending #{} GetFeatureOfInterest request for procedure '{}'", counter--, phenomenonID);
             FutureTask<OperationResult> futureTask = getFoiAccessTasks.get(phenomenonID);
             AccessorThreadPool.execute(futureTask);
+            OperationResult result = null;
             try {
-                OperationResult opsRes = futureTask.get(SERVER_TIMEOUT, MILLISECONDS);
-                GetFeatureOfInterestParser getFoiParser = new GetFeatureOfInterestParser(opsRes, metadata);
-                getFoiParser.createFeatures();
+                result = waitForResult(futureTask, metadata.getTimeout());
+            } catch (Exception e) {
+                LOGGER.error("Get no result for GetFeatureOfInterest!");
             }
-            catch (TimeoutException e) {
-                LOGGER.error("Timeout occured.", e);
+            if (result == null) {
+                LOGGER.error("Get no result for GetFeatureOfInterest!");
+            } else {
+                GetFeatureOfInterestParser getFoiParser = new GetFeatureOfInterestParser(result, metadata);
+                getFoiParser.createFeatures();
             }
         }
     }

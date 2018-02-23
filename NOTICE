@@ -52,7 +52,6 @@ This project includes:
   gimv under The Apache Software License, Version 2.0
   GRDC schema binding under GNU General Public License, v2.0
   Guava: Google Core Libraries for Java under The Apache Software License, Version 2.0
-  gwt-openlayers-client under The Apache Software License, Version 2.0
   gwt-servlet under GWT Terms
   gwt-user under GWT Terms
   Hamcrest All under New BSD License
@@ -135,7 +134,6 @@ This project includes:
   Shared SES Components under GNU General Public License, v2.0
   Shared SOS Components under GNU General Public License, v2.0
   SLF4J API Module under MIT License
-  smartgwt under GNU Lesser General Public License (LGPL)
   SOS Hydrology Profil Connector under GNU General Public License, v2.0
   SOS Rest Interface under GNU General Public License, v2.0
   SOS RPC Bindings under GNU General Public License, v2.0
@@ -151,7 +149,6 @@ This project includes:
   Spring Web MVC under The Apache Software License, Version 2.0
   StAX API under The Apache Software License, Version 2.0
   swe-common-data-framework under Mozilla Public License version 1.1
-  User Interface under GNU General Public License, v2.0
   vecmath under Sun Binary Code License Agreement
   W3C SOAP specification recommondation (v1.2 part 1) under The Apache Software License, Version 2.0
   W3C WS-Addressing specification schemas (v1.0) under The Apache Software License, Version 2.0

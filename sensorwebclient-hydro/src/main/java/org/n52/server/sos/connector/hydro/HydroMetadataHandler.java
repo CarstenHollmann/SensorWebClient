@@ -27,35 +27,42 @@
  */
 package org.n52.server.sos.connector.hydro;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.n52.oxf.sos.adapter.ISOSRequestBuilder.GET_FOI_SERVICE_PARAMETER;
-import static org.n52.oxf.sos.adapter.ISOSRequestBuilder.GET_FOI_VERSION_PARAMETER;
-import static org.n52.oxf.sos.adapter.SOSAdapter.GET_FEATURE_OF_INTEREST;
-import static org.n52.server.mgmt.ConfigurationContext.SERVER_TIMEOUT;
-import static org.n52.server.sos.connector.hydro.SOSwithSoapAdapter.GET_DATA_AVAILABILITY;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import java.util.concurrent.TimeoutException;
-
+import net.opengis.om.x20.OMObservationType;
+import net.opengis.sos.x20.GetObservationResponseDocument;
+import net.opengis.sos.x20.GetObservationResponseType;
 import org.apache.xmlbeans.SimpleValue;
 import org.apache.xmlbeans.XmlException;
 import org.apache.xmlbeans.XmlObject;
+import org.apache.xmlbeans.XmlString;
 import org.n52.oxf.OXFException;
 import org.n52.oxf.adapter.OperationResult;
 import org.n52.oxf.adapter.ParameterContainer;
 import org.n52.oxf.ows.capabilities.Operation;
+import org.n52.oxf.sos.adapter.ISOSRequestBuilder;
+import static org.n52.oxf.sos.adapter.ISOSRequestBuilder.GET_FOI_SERVICE_PARAMETER;
+import static org.n52.oxf.sos.adapter.ISOSRequestBuilder.GET_FOI_VERSION_PARAMETER;
+import static org.n52.oxf.sos.adapter.SOSAdapter.GET_FEATURE_OF_INTEREST;
 import org.n52.server.da.AccessorThreadPool;
 import org.n52.server.da.MetadataHandler;
 import org.n52.server.da.oxf.OperationAccessor;
+import static org.n52.server.mgmt.ConfigurationContext.getSOSMetadata;
 import org.n52.server.parser.ConnectorUtils;
 import org.n52.server.parser.GetFeatureOfInterestParser;
+import static org.n52.server.sos.connector.hydro.SOSwithSoapAdapter.GET_DATA_AVAILABILITY;
+import org.n52.server.util.PropertiesToHtml;
+import org.n52.server.util.XmlHelper;
 import org.n52.shared.serializable.pojos.TimeseriesProperties;
 import org.n52.shared.serializable.pojos.sos.Category;
 import org.n52.shared.serializable.pojos.sos.Feature;
@@ -66,6 +73,7 @@ import org.n52.shared.serializable.pojos.sos.SOSMetadata;
 import org.n52.shared.serializable.pojos.sos.SosService;
 import org.n52.shared.serializable.pojos.sos.SosTimeseries;
 import org.n52.shared.serializable.pojos.sos.Station;
+import org.n52.shared.serializable.pojos.sos.TimeseriesParametersLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +82,16 @@ public class HydroMetadataHandler extends MetadataHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(HydroMetadataHandler.class);
 
     static final String SOS_GDA_10_PARAMETERS_PREFINAL_NS = "http://www.opengis.net/om/2.0";
+
+    private static final Map<String, String> namespaceDeclarations = new HashMap<String, String>();
+
+    static {
+        namespaceDeclarations.put("om", "http://www.opengis.net/om/2.0");
+        namespaceDeclarations.put("sos", "http://www.opengis.net/sos/2.0");
+        namespaceDeclarations.put("wml", "http://www.opengis.net/waterml/2.0");
+    }
+
+    private final XmlHelper xmlHelper = new XmlHelper(namespaceDeclarations);
 
     public HydroMetadataHandler(SOSMetadata metadata) {
         super(metadata);
@@ -86,6 +104,24 @@ public class HydroMetadataHandler extends MetadataHandler {
         // (HyProfile must request an Observation (without timestamp we get the last value))
         // ==> move metadata obtaining strategy to MetadataHandler class: a different strategy can
         // be used by overriding the default (metadata via SensorML)
+
+        SosTimeseries timeseries = properties.getTimeseries();
+        SOSMetadata sosMetadata = getSOSMetadata(timeseries.getServiceUrl());
+        TimeseriesParametersLookup lookup = sosMetadata.getTimeseriesParametersLookup();
+
+
+        String phenomenonId = timeseries.getPhenomenonId();
+        String uom = lookup.getPhenomenon(phenomenonId).getUnitOfMeasure();
+        Station station = sosMetadata.getStationByTimeSeries(timeseries);
+
+        Map<String, String> tsMetadata = new HashMap<String, String>();
+        tsMetadata.put("UOM", uom);
+        tsMetadata.put("Name", station.getLabel());
+
+        PropertiesToHtml toHtml = PropertiesToHtml.createFromProperties(tsMetadata);
+
+        properties.setMetadataUrl(toHtml.create(timeseries));
+        properties.setUnitOfMeasure(uom);
 
     }
 
@@ -103,18 +139,7 @@ public class HydroMetadataHandler extends MetadataHandler {
         return metadata;
     }
 
-    @Override
-    public SOSMetadata updateMetadata(SOSMetadata metadata) throws Exception {
-        SOSMetadata newMetadata = metadata.clone();
-        initMetadata();
-        collectTimeseries(newMetadata);
-        return newMetadata;
-    }
-
     protected void collectTimeseries(SOSMetadata metadata) throws OXFException,
-            InterruptedException,
-            ExecutionException,
-            TimeoutException,
             XmlException,
             IOException {
 
@@ -122,81 +147,147 @@ public class HydroMetadataHandler extends MetadataHandler {
         Collection<SosTimeseries> observingTimeseries = createObservingTimeseries(metadata.getServiceUrl());
 
         Map<SosTimeseries, FutureTask<OperationResult>> getDataAvailabilityTasks = new HashMap<SosTimeseries, FutureTask<OperationResult>>();
+        Map<String, FutureTask<OperationResult>> getEmptyGOAccessTasks = new HashMap<String, FutureTask<OperationResult>>();
         Map<String, FutureTask<OperationResult>> getFoiAccessTasks = new HashMap<String, FutureTask<OperationResult>>();
 
         // create tasks by iteration over procedures
         for (SosTimeseries timeserie : observingTimeseries) {
-            String procedureID = timeserie.getProcedureId();
-            getFoiAccessTasks.put(procedureID, new FutureTask<OperationResult>(createGetFoiAccess(metadata,procedureID)));
             getDataAvailabilityTasks.put(timeserie, new FutureTask<OperationResult>(createGDAAccess(metadata,timeserie)));
         }
 
         // create list of timeseries of GDA requests
         Collection<SosTimeseries> timeseries = executeGDATasks(getDataAvailabilityTasks, metadata);
 
+        
+        // create get feature ans phenomenon tasks from GDA resulting timeseries
+        for (SosTimeseries timeserie : timeseries) {
+            if (!getEmptyGOAccessTasks.containsKey(timeserie.getPhenomenonId())) {
+                getEmptyGOAccessTasks.put(timeserie.getPhenomenonId(), new FutureTask<OperationResult>(createEmptyGOAccess(metadata,timeserie)));
+            }
+            if (!getFoiAccessTasks.containsKey(timeserie.getFeatureId())) {
+                getFoiAccessTasks.put(timeserie.getFeatureId(), new FutureTask<OperationResult>(createGetFoiAccess4Foi(metadata,timeserie.getFeatureId())));
+            }
+        }
+        
         // iterate over tasks of getFOI and add them to metadata
         executeFoiTasks(getFoiAccessTasks, metadata);
 
         // iterate over timeseries and add them to station with according feature id
         for (SosTimeseries timeserie : timeseries) {
-            String feature = timeserie.getFeatureId();
-            Station station = metadata.getStation(feature);
-            if (station != null) {
-                station.addTimeseries(timeserie);
+            String featureId = timeserie.getFeatureId();
+            TimeseriesParametersLookup lookup = metadata.getTimeseriesParametersLookup();
+            Feature feature = lookup.getFeature(featureId);
+            if (feature != null) {
+                Station station = metadata.getStationByTimeSeries(timeserie);
+                station = station != null ? station : metadata.getStation(featureId);
+                if (station != null) {
+                    station.addTimeseries(timeserie);
+                    LOGGER.debug("{} added!.", timeserie);
+                } else {
+                    LOGGER.warn("{} not added! No station for feature '{}'.", timeserie, featureId);
+                }
             }
             else {
-                LOGGER.warn("{} not added! No station for feature '{}'.", timeserie, feature);
+                LOGGER.warn("{} not added! No station for feature '{}'.", timeserie, featureId);
             }
         }
+
+        // get the UOM from empty GO requests
+        executeEmptyGOTasks(getEmptyGOAccessTasks, metadata);
 
         infoLogServiceSummary(metadata);
         metadata.setHasDonePositionRequest(true);
     }
 
     private Collection<SosTimeseries> executeGDATasks(Map<SosTimeseries, FutureTask<OperationResult>> getDataAvailabilityTasks,
-                                                      SOSMetadata metadata) throws InterruptedException,
-            ExecutionException,
-            TimeoutException,
+                                                      SOSMetadata metadata) throws
             XmlException,
             IOException {
         int counter = getDataAvailabilityTasks.size();
         LOGGER.debug("Sending " + counter + " GetDataAvailability requests");
-        Collection<SosTimeseries> timeseries = new ArrayList<SosTimeseries>();
+        Collection<SosTimeseries> timeseries = new HashSet<SosTimeseries>();
         for (SosTimeseries timeserie : getDataAvailabilityTasks.keySet()) {
-            LOGGER.debug("Sending #{} GetDataAvailability request for procedure " + timeserie.getProcedureId(),
+            LOGGER.debug("Sending #{} GetDataAvailability request for: " + timeserie.getProcedureId() + ", " + timeserie.getPhenomenonId() ,
                          counter--);
             FutureTask<OperationResult> futureTask = getDataAvailabilityTasks.get(timeserie);
             AccessorThreadPool.execute(futureTask);
-            OperationResult result = futureTask.get(metadata.getTimeout(), MILLISECONDS);
+            OperationResult result = waitForResult(futureTask, metadata.getTimeout());
             if (result == null) {
                 LOGGER.error("Get no result for GetDataAvailability with parameter constellation: " + timeserie + "!");
+                continue;
+            } else {
+                XmlObject result_xb = XmlObject.Factory.parse(result.getIncomingResultAsStream());
+                timeseries.addAll(getAvailableTimeseries(result_xb, timeserie, metadata));
             }
-            XmlObject result_xb = XmlObject.Factory.parse(result.getIncomingResultAsStream());
-            timeseries.addAll(getAvailableTimeseries(result_xb, timeserie, metadata));
         }
         return timeseries;
     }
 
-    private void executeFoiTasks(Map<String, FutureTask<OperationResult>> getFoiAccessTasks, SOSMetadata metadata) throws InterruptedException,
-            ExecutionException,
+    protected final OperationResult waitForResult(FutureTask<OperationResult> task, long timeout) {
+        OperationResult result = null;
+        try {
+             result = task.get(timeout, MILLISECONDS);
+        } catch (TimeoutException e) {
+            LOGGER.warn("Request took too long.", e);
+        } catch (InterruptedException e) {
+            LOGGER.warn("Request was interrupted.", e);
+        } catch (ExecutionException e ) {
+            LOGGER.warn("Request execution failed.", e);
+        }
+        return result;
+    }
+
+
+    private void executeEmptyGOTasks(Map<String, FutureTask<OperationResult>> emptyGOAccessTasks, SOSMetadata metadata) throws XmlException, IOException {
+        int counter = emptyGOAccessTasks.size();
+
+        for (String procedureDomainId : emptyGOAccessTasks.keySet()) {
+            LOGGER.debug("Sending #{} empty GetObservation request for phenomenon '{}'.", counter--, procedureDomainId);
+
+            FutureTask<OperationResult> futureTask = emptyGOAccessTasks.get(procedureDomainId);
+            AccessorThreadPool.execute(futureTask);
+            OperationResult result = waitForResult(futureTask, metadata.getTimeout());
+            if (result == null) {
+                LOGGER.warn("Get no result for GetObservation with phenomenon filter '{}'.", procedureDomainId);
+                continue;
+            }
+            GetObservationResponseDocument goDoc = GetObservationResponseDocument.Factory.parse(result.getIncomingResultAsStream());
+            GetObservationResponseType go = goDoc.getGetObservationResponse();
+
+            String observationsXPath = "$this//*/om:OM_Observation";
+            OMObservationType[] observations = xmlHelper.parseAll(go, observationsXPath, OMObservationType.class);
+            for (OMObservationType observation : observations) {
+                String uomXPath = "$this//om:result/wml:MeasurementTimeseries/*/*/wml:uom/@code/string()";
+                XmlString uom = xmlHelper.parseFirst(observation, uomXPath, XmlString.class);
+
+                String phenomenonDomainId = observation.getObservedProperty().getHref();
+                TimeseriesParametersLookup lookup = metadata.getTimeseriesParametersLookup();
+                Phenomenon phenomenon = lookup.getPhenomenon(phenomenonDomainId);
+                phenomenon.setUnitOfMeasure(uom == null ? "" : uom.getStringValue());
+            }
+        }
+
+    }
+
+
+    private void executeFoiTasks(Map<String, FutureTask<OperationResult>> getFoiAccessTasks, SOSMetadata metadata) throws
             XmlException,
             IOException,
             OXFException {
         int counter;
         counter = getFoiAccessTasks.size();
         LOGGER.debug("Sending {} GetFeatureOfInterest requests", counter);
-        for (String procedureID : getFoiAccessTasks.keySet()) {
-            LOGGER.debug("Sending #{} GetFeatureOfInterest request for procedure '{}'", counter--, procedureID);
-            FutureTask<OperationResult> futureTask = getFoiAccessTasks.get(procedureID);
+        for (String id : getFoiAccessTasks.keySet()) {
+            LOGGER.debug("Sending #{} GetFeatureOfInterest request for '{}'", counter--, id);
+            FutureTask<OperationResult> futureTask = getFoiAccessTasks.get(id);
             AccessorThreadPool.execute(futureTask);
-            try {
-                OperationResult opRes = futureTask.get(metadata.getTimeout(), MILLISECONDS);
-                GetFeatureOfInterestParser getFoiParser = new GetFeatureOfInterestParser(opRes, metadata);
-                getFoiParser.createFeatures();
+            OperationResult opRes = waitForResult(futureTask, metadata.getTimeout());
+            if (opRes == null) {
+                LOGGER.warn("Get no result for GetFeatureOfInterest with filter '{}'", id);
+                continue;
             }
-            catch (TimeoutException e) {
-                LOGGER.error("Timeout occured.", e);
-            }
+            GetFeatureOfInterestParser getFoiParser = new GetFeatureOfInterestParser(opRes, metadata);
+            getFoiParser.createFeatures();
         }
     }
 
@@ -255,22 +346,56 @@ public class HydroMetadataHandler extends MetadataHandler {
         ParameterContainer container = new ParameterContainer();
         container.addParameterShell(GET_FOI_SERVICE_PARAMETER, "SOS");
         container.addParameterShell(GET_FOI_VERSION_PARAMETER, metadata.getSosVersion());
-        container.addParameterShell("procedure", procedureID);
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_PROCEDURE_PARAMETER, procedureID);
+        String sosUrl = metadata.getServiceUrl();
+        Operation operation = new Operation(GET_FEATURE_OF_INTEREST, sosUrl, sosUrl);
+        return new OperationAccessor(getSosAdapter(), operation, container);
+    }
+    
+    private Callable<OperationResult> createGetFoiAccess4Foi(SOSMetadata metadata, String featureId) throws OXFException {
+        ParameterContainer container = new ParameterContainer();
+        container.addParameterShell(GET_FOI_SERVICE_PARAMETER, "SOS");
+        container.addParameterShell(GET_FOI_VERSION_PARAMETER, metadata.getSosVersion());
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_FEATURE_OF_INTEREST_PARAMETER, featureId);
         String sosUrl = metadata.getServiceUrl();
         Operation operation = new Operation(GET_FEATURE_OF_INTEREST, sosUrl, sosUrl);
         return new OperationAccessor(getSosAdapter(), operation, container);
     }
 
-    private Callable<OperationResult> createGDAAccess(SOSMetadata metadata, SosTimeseries timeserie) throws OXFException {
+    private Callable<OperationResult> createEmptyGOAccess(SOSMetadata metadata, SosTimeseries timeserie) throws OXFException {
+        ParameterContainer container = new ParameterContainer();
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_SERVICE_PARAMETER, "SOS");
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_VERSION_PARAMETER, metadata.getSosVersion());
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_OBSERVED_PROPERTY_PARAMETER, timeserie.getPhenomenonId());
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_PROCEDURE_PARAMETER, timeserie.getProcedureId());
+        if (timeserie.getFeatureId() != null && !timeserie.getFeatureId().isEmpty()) {
+            container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_FEATURE_OF_INTEREST_PARAMETER, timeserie.getFeatureId());
+        }
+        String sosUrl = metadata.getServiceUrl();
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_RESPONSE_FORMAT_PARAMETER, "http://www.opengis.net/waterml/2.0");
+        Operation operation = new Operation(SOSwithSoapAdapter.GET_OBSERVATION, sosUrl, sosUrl);
+        return new OperationAccessor(getSosAdapter(), operation, container);
+    }
 
+    private Callable<OperationResult> createGDAAccess(SOSMetadata metadata, SosTimeseries timeserie) throws OXFException {
         String sosUrl = metadata.getServiceUrl();
         ParameterContainer container = new ParameterContainer();
-        container.addParameterShell("procedure", timeserie.getProcedureId());
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_PROCEDURE_PARAMETER, timeserie.getProcedureId());
+        container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_OBSERVED_PROPERTY_PARAMETER, timeserie.getPhenomenonId());
+        if (timeserie.getFeatureId() != null && !timeserie.getFeatureId().isEmpty()) {
+            container.addParameterShell(ISOSRequestBuilder.GET_OBSERVATION_FEATURE_OF_INTEREST_PARAMETER, timeserie.getFeatureId());
+        }
         container.addParameterShell("version", metadata.getVersion());
         String gdaPrefinal = Boolean.toString(metadata.isGdaPrefinal());
         container.addParameterShell("gdaPrefinalNamespace", gdaPrefinal);
         Operation operation = new Operation(GET_DATA_AVAILABILITY, sosUrl, sosUrl);
         return new OperationAccessor(getSosAdapter(), operation, container);
+    }
+
+    @Override
+    public SOSMetadata updateMetadata(SOSMetadata metadata) throws Exception {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

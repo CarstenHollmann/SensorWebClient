@@ -177,6 +177,7 @@ public class SOSwithSoapAdapter extends SOSAdapter {
             OXFException {
         HttpEntity responseEntity = null;
         String request = buildRequest(operation, parameters);
+        LOGGER.trace("Send request: {}", request);
         try {
             String url = operation.getDcps()[0].getHTTPPostRequestMethods().get(0).getOnlineResource().getHref();
             responseEntity = sendSoapRequest(url, request);

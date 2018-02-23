@@ -31,7 +31,7 @@
         <module>sensorwebclient-sos-rest</module>
         <module>sensorwebclient-sos-server</module>
         <module>sensorwebclient-sos-shared</module>
-        <module>sensorwebclient-ui</module>
+        <!-- <module>sensorwebclient-ui</module> -->
         <module>sensorwebclient-ags</module>
         <module>sensorwebclient-hydro</module>
         <module>sensorwebclient-webapp</module>
@@ -134,11 +134,13 @@
                 <artifactId>sensorwebclient-ses-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- 
             <dependency>
                 <groupId>org.n52.sensorweb</groupId>
                 <artifactId>sensorwebclient-ui</artifactId>
                 <version>${project.version}</version>
             </dependency>
+             -->
             <dependency>
                 <groupId>org.n52.sensorweb</groupId>
                 <artifactId>sensorwebclient-webapp</artifactId>
@@ -661,7 +663,7 @@
                         <id>check-license</id>
                         <phase>initialize</phase>
                         <goals>
-                            <goal>check</goal>
+                            <goal>generate</goal>
                         </goals>
                     </execution>
                 </executions>
