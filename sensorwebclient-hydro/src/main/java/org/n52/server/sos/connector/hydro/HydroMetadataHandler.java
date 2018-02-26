@@ -77,6 +77,9 @@ import org.n52.shared.serializable.pojos.sos.TimeseriesParametersLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
+
 public class HydroMetadataHandler extends MetadataHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HydroMetadataHandler.class);
@@ -147,7 +150,7 @@ public class HydroMetadataHandler extends MetadataHandler {
         Collection<SosTimeseries> observingTimeseries = createObservingTimeseries(metadata.getServiceUrl());
 
         Map<SosTimeseries, FutureTask<OperationResult>> getDataAvailabilityTasks = new HashMap<SosTimeseries, FutureTask<OperationResult>>();
-        Map<String, FutureTask<OperationResult>> getEmptyGOAccessTasks = new HashMap<String, FutureTask<OperationResult>>();
+        Table<String, String, FutureTask<OperationResult>> getEmptyGOAccessTasks = HashBasedTable.create();
         Map<String, FutureTask<OperationResult>> getFoiAccessTasks = new HashMap<String, FutureTask<OperationResult>>();
 
         // create tasks by iteration over procedures
@@ -161,8 +164,8 @@ public class HydroMetadataHandler extends MetadataHandler {
         
         // create get feature ans phenomenon tasks from GDA resulting timeseries
         for (SosTimeseries timeserie : timeseries) {
-            if (!getEmptyGOAccessTasks.containsKey(timeserie.getPhenomenonId())) {
-                getEmptyGOAccessTasks.put(timeserie.getPhenomenonId(), new FutureTask<OperationResult>(createEmptyGOAccess(metadata,timeserie)));
+            if (!getEmptyGOAccessTasks.contains(timeserie.getPhenomenonId(), timeserie.getFeatureId())) {
+                    getEmptyGOAccessTasks.put(timeserie.getPhenomenonId(), timeserie.getFeatureId(), new FutureTask<OperationResult>(createEmptyGOAccess(metadata,timeserie)));
             }
             if (!getFoiAccessTasks.containsKey(timeserie.getFeatureId())) {
                 getFoiAccessTasks.put(timeserie.getFeatureId(), new FutureTask<OperationResult>(createGetFoiAccess4Foi(metadata,timeserie.getFeatureId())));
@@ -238,35 +241,43 @@ public class HydroMetadataHandler extends MetadataHandler {
     }
 
 
-    private void executeEmptyGOTasks(Map<String, FutureTask<OperationResult>> emptyGOAccessTasks, SOSMetadata metadata) throws XmlException, IOException {
+    private void executeEmptyGOTasks(Table<String, String, FutureTask<OperationResult>> emptyGOAccessTasks, SOSMetadata metadata) throws XmlException, IOException {
         int counter = emptyGOAccessTasks.size();
 
-        for (String procedureDomainId : emptyGOAccessTasks.keySet()) {
-            LOGGER.debug("Sending #{} empty GetObservation request for phenomenon '{}'.", counter--, procedureDomainId);
-
-            FutureTask<OperationResult> futureTask = emptyGOAccessTasks.get(procedureDomainId);
-            AccessorThreadPool.execute(futureTask);
-            OperationResult result = waitForResult(futureTask, metadata.getTimeout());
-            if (result == null) {
-                LOGGER.warn("Get no result for GetObservation with phenomenon filter '{}'.", procedureDomainId);
-                continue;
-            }
-            GetObservationResponseDocument goDoc = GetObservationResponseDocument.Factory.parse(result.getIncomingResultAsStream());
-            GetObservationResponseType go = goDoc.getGetObservationResponse();
-
-            String observationsXPath = "$this//*/om:OM_Observation";
-            OMObservationType[] observations = xmlHelper.parseAll(go, observationsXPath, OMObservationType.class);
-            for (OMObservationType observation : observations) {
-                String uomXPath = "$this//om:result/wml:MeasurementTimeseries/*/*/wml:uom/@code/string()";
-                XmlString uom = xmlHelper.parseFirst(observation, uomXPath, XmlString.class);
-
-                String phenomenonDomainId = observation.getObservedProperty().getHref();
-                TimeseriesParametersLookup lookup = metadata.getTimeseriesParametersLookup();
-                Phenomenon phenomenon = lookup.getPhenomenon(phenomenonDomainId);
-                phenomenon.setUnitOfMeasure(uom == null ? "" : uom.getStringValue());
+        for (String phenomenonDomainId : emptyGOAccessTasks.rowKeySet()) {
+            for (String featureDomainId : emptyGOAccessTasks.columnKeySet()) {
+                LOGGER.debug("Sending #{} empty GetObservation request for phenomenon '{}' and feature '{}'.", counter--, phenomenonDomainId, featureDomainId);
+    
+                FutureTask<OperationResult> futureTask = emptyGOAccessTasks.get(phenomenonDomainId, featureDomainId);
+                if (futureTask == null) {
+                    continue;
+                }
+                AccessorThreadPool.execute(futureTask);
+                OperationResult result = waitForResult(futureTask, metadata.getTimeout());
+                if (result == null) {
+                    LOGGER.warn("Get no result for GetObservation with phenomenon filter '{}' and '{}'.", phenomenonDomainId, featureDomainId);
+                    continue;
+                }
+                GetObservationResponseDocument goDoc = GetObservationResponseDocument.Factory.parse(result.getIncomingResultAsStream());
+                GetObservationResponseType go = goDoc.getGetObservationResponse();
+    
+                if (go.getObservationDataArray() == null || go.getObservationDataArray().length <= 0) {
+                    continue;
+                }
+                    
+                String observationsXPath = "$this//*/om:OM_Observation";
+                OMObservationType[] observations = xmlHelper.parseAll(go, observationsXPath, OMObservationType.class);
+                for (OMObservationType observation : observations) {
+                    String uomXPath = "$this//om:result/wml:MeasurementTimeseries/*/*/wml:uom/@code/string()";
+                    XmlString uom = xmlHelper.parseFirst(observation, uomXPath, XmlString.class);
+    
+                    String phenomenonId = observation.getObservedProperty().getHref();
+                    TimeseriesParametersLookup lookup = metadata.getTimeseriesParametersLookup();
+                    Phenomenon phenomenon = lookup.getPhenomenon(phenomenonId);
+                    phenomenon.setUnitOfMeasure(uom == null ? "" : uom.getStringValue());
+                }
             }
         }
-
     }
 
 
